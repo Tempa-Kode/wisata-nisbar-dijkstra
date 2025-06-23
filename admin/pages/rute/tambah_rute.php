@@ -19,7 +19,7 @@ require_once 'handler.php';
                     <label for="titik_awal" class="col-form-label">Titik Awal</label>
                 </div>
                 <div class="col-12 col-lg-8">
-                    <select class="form-select js-example-basic-single" name="titik_awal" id="titik_awal">
+                    <select class="form-control js-example-basic-single" name="titik_awal" id="titik_awal">
                         <option value="" hidden>pilih titik awal</option>
                         <?php foreach ($destinasi as $d) : ?>
                             <option value="<?= $d['id']; ?>"><?= $d['nama_destinasi']; ?></option>
@@ -33,7 +33,7 @@ require_once 'handler.php';
                     <label for="lokasi" class="col-form-label">Titik Tujuan</label>
                 </div>
                 <div class="col-12 col-lg-8">
-                    <select class="form-select js-example-basic-single" name="titik_tujuan" id="titik_tujuan">
+                    <select class="form-control js-example-basic-single" name="titik_tujuan" id="titik_tujuan">
                         <option value="" hidden>pilih titik tujuan</option>
                         <?php foreach ($destinasi as $d) : ?>
                             <option value="<?= $d['id']; ?>"><?= $d['nama_destinasi']; ?></option>

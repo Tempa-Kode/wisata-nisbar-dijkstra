@@ -25,13 +25,14 @@ require_once 'components/header.php';
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
+    
+    <!-- AJAX -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
     <!-- Select2 -->
-    <link href="../assets/css/select2.min.css" rel="stylesheet" />
-    <script src="../assets/js/select2.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-    <!-- AJAX -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="page-wrapper" id="main-wrapper" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
@@ -154,8 +155,8 @@ require_once 'components/header.php';
             <!--content end-->
         </div>
     </div>
-    <script src="../assets/js/select2.min.js"></script>
-    <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
+    <!-- <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
+    <script src="../assets/js/select2.min.js"></script> -->
     <script src="https://cdn.datatables.net/2.3.1/js/dataTables.js"></script>
     <script src="../assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../assets/js/sidebarmenu.js"></script>
@@ -164,10 +165,14 @@ require_once 'components/header.php';
     <script src="../assets/libs/simplebar/dist/simplebar.js"></script>
     <script src="../assets/js/dashboard.js"></script>
     <script type="text/javascript">
+        $(document).ready(function() {
+            console.log("jQuery is ready!");
+        });
         $(document).ready( function () {
             $('#datatable').DataTable();
         } );
         $(document).ready(function() {
+            console.log("jQuery version:", $.fn.jquery);
             $('.js-example-basic-single').select2();
         });
     </script>
