@@ -58,6 +58,7 @@ require_once 'user-handler/destinasi-wisata.php';
           <li><a href="destinasi-wisata.php" class="active">Destinasi Wisata</a></li>
           <li><a href="rute-perjalanan.php">Rute Perjalanan</a></li>
         </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
       </nav>
 
       <a class="btn-getstarted flex-md-shrink-0" href="admin/login.php">Login Admin</a>

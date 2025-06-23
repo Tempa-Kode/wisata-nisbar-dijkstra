@@ -53,6 +53,7 @@
           <li><a href="destinasi-wisata.php">Destinasi Wisata</a></li>
           <li><a href="rute-perjalanan.php">Rute Perjalanan</a></li>
         </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
       </nav>
 
       <a class="btn-getstarted flex-md-shrink-0" href="admin/login.php">Login Admin</a>
