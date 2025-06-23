@@ -42,7 +42,7 @@ require_once 'components/header.php';
             <div>
                 <div class="brand-logo d-flex align-items-center justify-content-between">
                     <a href="./index.html" class="text-nowrap logo-img">
-                        <img src="../assets/images/logos/dark-logo.svg" width="180" alt="" />
+                        <h4 class="text-uppercase">Dashboard Admin</h4>
                     </a>
                     <div class="close-btn d-xl-none d-block sidebartoggler cursor-pointer" id="sidebarCollapse">
                         <i class="ti ti-x fs-8"></i>
@@ -123,7 +123,7 @@ require_once 'components/header.php';
                                             <i class="ti ti-user fs-6"></i>
                                             <p class="mb-0 fs-3">Profil Saya</p>
                                         </a>
-                                        <a href="#" class="btn btn-outline-danger mx-3 mt-2 d-block">Logout</a>
+                                        <a href="logout.php" class="btn btn-outline-danger mx-3 mt-2 d-block">Logout</a>
                                     </div>
                                 </div>
                             </li>
