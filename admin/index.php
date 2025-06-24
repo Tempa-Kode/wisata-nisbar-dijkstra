@@ -42,7 +42,7 @@ require_once 'components/header.php';
             <!-- Sidebar scroll-->
             <div>
                 <div class="brand-logo d-flex align-items-center justify-content-between">
-                    <a href="./index.html" class="text-nowrap logo-img">
+                    <a href="/admin/index.php" class="text-nowrap logo-img">
                         <h4 class="text-uppercase">Dashboard Admin</h4>
                     </a>
                     <div class="close-btn d-xl-none d-block sidebartoggler cursor-pointer" id="sidebarCollapse">
