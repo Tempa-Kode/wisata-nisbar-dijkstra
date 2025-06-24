@@ -19,7 +19,7 @@ require_once 'handler.php';
                     <label for="nama_destinasi" class="col-form-label">Nama Destinasi</label>
                 </div>
                 <div class="col-12 col-lg-8">
-                    <input type="text" id="nama_destinasi" class="form-control" name="nama_destinasi">
+                    <input type="text" id="nama_destinasi" class="form-control" name="nama_destinasi" oninput="updateMap()" required>
                 </div>
                 <hr class="border border-black">
             </div>
@@ -37,7 +37,7 @@ require_once 'handler.php';
                     <label for="latitude" class="col-form-label">Latitude</label>
                 </div>
                 <div class="col-12 col-lg-8">
-                    <input type="number" id="latitude" class="form-control" name="latitude" step="any" oninput="updateMap()">
+                    <input type="number" id="latitude" class="form-control" name="latitude" step="any" onchange="updateMap()">
                 </div>
                 <hr class="border border-black">
             </div>
@@ -64,7 +64,7 @@ require_once 'handler.php';
                     <label for="kategori" class="col-form-label">Kategori</label>
                 </div>
                 <div class="col-12 col-lg-8">
-                    <select class="form-select" aria-label="Default select example" id="kategori" name="kategori">
+                    <select class="form-select js-example-basic-single" aria-label="Default select example" id="kategori" name="kategori">
                         <option hidden>pilih kategori</option>
                         <?php foreach ($kategori_destinasi as $kategori) : ?>
                             <option value="<?= $kategori['id']; ?>"><?= $kategori['nama']; ?></option>
@@ -99,10 +99,7 @@ require_once 'handler.php';
 <script type="text/javascript">
     let map;
     let marker;
-    const latitude = 1.0214452457361827;
-    const longitude = 97.4450595500965;
-    const namaDestinasi = "Nias Barat";
-    initMap(latitude, longitude, namaDestinasi);
+    initMap(1.0214452457361827, 97.4450595500965, "Nias Barat");
 
     function initMap(latitude, longitude, namaDestinasi) {
         map = L.map('map').setView([latitude, longitude], 12);
@@ -119,6 +116,7 @@ require_once 'handler.php';
     function updateMap() {
         const lat = parseFloat(document.getElementById('latitude').value);
         const lon = parseFloat(document.getElementById('longitude').value);
+        const namaDestinasi = document.getElementById('nama_destinasi').value;
 
         if (!isNaN(lat) && !isNaN(lon)) {
             map.setView([lat, lon], 12);

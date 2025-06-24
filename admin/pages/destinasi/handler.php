@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['_method']) && $_POST['
     $lokasi = $_POST['lokasi'];
     $latitude = $_POST['latitude'];
     $longitude = $_POST['longitude'];
-    $kategori = $_POST['kategori'];
+    $kategori = $_POST['kategori']; 
     $deskripsi = $_POST['deskripsi'];
 
     $namafile = $_FILES["gambar"]["name"];
