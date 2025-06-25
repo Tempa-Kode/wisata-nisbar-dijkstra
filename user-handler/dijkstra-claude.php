@@ -30,11 +30,20 @@ function haversineDistance($lat1, $lon1, $lat2, $lon2) {
  * @param PDO $pdo Koneksi database
  * @param float $userLat Latitude user
  * @param float $userLon Longitude user
+ * @param int $excludeId ID destinasi yang ingin dikecualikan
  * @return array|null Destinasi terdekat
  */
-function findNearestDestination($pdo, $userLat, $userLon) {
-    $sql = "SELECT id, nama_destinasi, latitude, longitude FROM destinasi";
-    $stmt = $pdo->query($sql);
+function findNearestDestination($pdo, $userLat, $userLon, $excludeId = null) {
+    $sql = "SELECT id, nama_destinasi, latitude, longitude, lokasi FROM destinasi";
+    if ($excludeId !== null) {
+        $sql .= " WHERE id != :exclude_id";
+    }
+    
+    $stmt = $pdo->prepare($sql);
+    if ($excludeId !== null) {
+        $stmt->bindParam(':exclude_id', $excludeId, PDO::PARAM_INT);
+    }
+    $stmt->execute();
     $destinations = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $nearestDestination = null;
@@ -50,6 +59,52 @@ function findNearestDestination($pdo, $userLat, $userLon) {
             $minDistance = $distance;
             $nearestDestination = $destination;
             $nearestDestination['distance_from_user'] = $distance;
+        }
+    }
+    
+    return $nearestDestination;
+}
+
+/**
+ * Mencari destinasi terdekat dari destinasi tertentu yang memiliki koneksi dalam graf
+ * @param PDO $pdo Koneksi database
+ * @param array $graph Graf dalam bentuk adjacency list
+ * @param int $destinationId ID destinasi
+ * @return array|null Destinasi terdekat yang terhubung
+ */
+function findNearestConnectedDestination($pdo, $graph, $destinationId) {
+    // Ambil koordinat destinasi asal
+    $stmt = $pdo->prepare("SELECT latitude, longitude FROM destinasi WHERE id = ?");
+    $stmt->execute([$destinationId]);
+    $originDestination = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$originDestination) {
+        return null;
+    }
+    
+    $nearestDestination = null;
+    $minDistance = PHP_FLOAT_MAX;
+    
+    // Cari destinasi terdekat yang ada dalam graf
+    foreach ($graph as $nodeId => $connections) {
+        if ($nodeId == $destinationId) continue; // Skip destinasi asal
+        
+        // Ambil koordinat destinasi ini
+        $stmt = $pdo->prepare("SELECT id, nama_destinasi, latitude, longitude, lokasi FROM destinasi WHERE id = ?");
+        $stmt->execute([$nodeId]);
+        $destination = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($destination) {
+            $distance = haversineDistance(
+                $originDestination['latitude'], $originDestination['longitude'],
+                $destination['latitude'], $destination['longitude']
+            );
+            
+            if ($distance < $minDistance) {
+                $minDistance = $distance;
+                $nearestDestination = $destination;
+                $nearestDestination['distance_from_origin'] = $distance;
+            }
         }
     }
     
@@ -214,7 +269,7 @@ function getRouteDetails($pdo, $path) {
 }
 
 /**
- * Fungsi utama untuk mencari rute
+ * Fungsi utama untuk mencari rute dengan rute alternatif
  * @param PDO $pdo Koneksi database
  * @param mixed $titikAwal ID destinasi atau 'lokasi_sekarang'
  * @param int $titikTujuan ID destinasi tujuan
@@ -262,26 +317,66 @@ function findRoute($pdo, $titikAwal, $titikTujuan, $userLat = null, $userLon = n
     // Bangun graph dan cari rute
     $graph = buildGraph($pdo);
     
-    // Pastikan titik awal dan tujuan ada dalam graph
-    if (!isset($graph[$titikAwal]) || !isset($graph[$titikTujuan])) {
-        $result['message'] = 'Titik awal atau tujuan tidak ditemukan dalam data jarak';
+    // Coba cari rute langsung terlebih dahulu
+    if (isset($graph[$titikAwal]) && isset($graph[$titikTujuan])) {
+        $dijkstraResult = dijkstra($graph, $titikAwal, $titikTujuan);
+        
+        if ($dijkstraResult['found']) {
+            $routeDetails = getRouteDetails($pdo, $dijkstraResult['path']);
+            
+            $result['success'] = true;
+            $result['message'] = 'Rute berhasil ditemukan';
+            $result['data']['route'] = [
+                'distance' => $dijkstraResult['distance'],
+                'path' => $dijkstraResult['path'],
+                'route_details' => $routeDetails,
+                'route_type' => 'direct'
+            ];
+            
+            return $result;
+        }
+    }
+    
+    // Jika tidak ada rute langsung, cari rute alternatif
+    // Cari destinasi terdekat dari titik awal yang memiliki koneksi dalam graf
+    $nearestConnected = findNearestConnectedDestination($pdo, $graph, $titikAwal);
+    
+    if (!$nearestConnected) {
+        $result['message'] = 'Tidak ada rute yang tersedia dari titik awal ke destinasi manapun';
         return $result;
     }
     
-    $dijkstraResult = dijkstra($graph, $titikAwal, $titikTujuan);
+    // Coba cari rute dari destinasi terdekat ke tujuan
+    $dijkstraResult = dijkstra($graph, $nearestConnected['id'], $titikTujuan);
     
     if ($dijkstraResult['found']) {
-        $routeDetails = getRouteDetails($pdo, $dijkstraResult['path']);
+        // Dapatkan detail destinasi awal
+        $stmt = $pdo->prepare("SELECT id, nama_destinasi, lokasi, latitude, longitude FROM destinasi WHERE id = ?");
+        $stmt->execute([$titikAwal]);
+        $originalStart = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Gabungkan rute: titik awal -> destinasi terdekat -> path ke tujuan
+        $fullPath = array_merge([$titikAwal], $dijkstraResult['path']);
+        $routeDetails = getRouteDetails($pdo, $fullPath);
+        
+        // Hitung total jarak (jarak ke destinasi terdekat + jarak rute)
+        $totalDistance = $nearestConnected['distance_from_origin'] + $dijkstraResult['distance'];
         
         $result['success'] = true;
-        $result['message'] = 'Rute berhasil ditemukan';
+        $result['message'] = 'Rute alternatif berhasil ditemukan';
         $result['data']['route'] = [
-            'distance' => $dijkstraResult['distance'],
-            'path' => $dijkstraResult['path'],
-            'route_details' => $routeDetails
+            'distance' => $totalDistance,
+            'path' => $fullPath,
+            'route_details' => $routeDetails,
+            'route_type' => 'alternative'
+        ];
+        $result['data']['alternative_info'] = [
+            'original_start' => $originalStart,
+            'intermediate_destination' => $nearestConnected,
+            'distance_to_intermediate' => $nearestConnected['distance_from_origin']
         ];
     } else {
-        $result['message'] = 'Tidak ada rute yang tersedia antara titik awal dan tujuan';
+        $result['message'] = 'Tidak ada rute yang tersedia antara titik awal dan tujuan, bahkan melalui rute alternatif';
     }
     
     return $result;
@@ -382,6 +477,16 @@ try {
                             <div class="alert alert-success">
                                 <h5><i class="fas fa-check-circle"></i> Rute Ditemukan!</h5>
                                 
+                                <!-- Informasi jenis rute -->
+                                <?php if (isset($routeResult['data']['route']['route_type']) && $routeResult['data']['route']['route_type'] === 'alternative'): ?>
+                                <div class="alert alert-info mb-3">
+                                    <h6><i class="fas fa-info-circle"></i> Rute Alternatif</h6>
+                                    <p class="mb-1">Tidak ada rute langsung dari titik awal ke tujuan. Sistem menemukan rute alternatif melalui destinasi terdekat:</p>
+                                    <strong><?= htmlspecialchars($routeResult['data']['alternative_info']['intermediate_destination']['nama_destinasi']) ?></strong>
+                                    <span class="badge bg-warning ms-2">Jarak ke destinasi perantara: <?= round($routeResult['data']['alternative_info']['distance_to_intermediate'], 2) ?> km</span>
+                                </div>
+                                <?php endif; ?>
+                                
                                 <!-- Jika menggunakan lokasi sekarang -->
                                 <?php if (isset($routeResult['data']['nearest_destination'])): ?>
                                 <div class="mb-3">
@@ -405,6 +510,9 @@ try {
                                         <?php 
                                         $isStart = $index === 0;
                                         $isEnd = $index === count($routeResult['data']['route']['route_details']) - 1;
+                                        $isIntermediate = isset($routeResult['data']['route']['route_type']) && 
+                                                        $routeResult['data']['route']['route_type'] === 'alternative' && 
+                                                        $index === 1;
                                         ?>
                                         <div class="list-group-item d-flex align-items-center">
                                             <div class="me-3">
@@ -412,13 +520,18 @@ try {
                                                 <span class="badge bg-primary rounded-pill">Start</span>
                                                 <?php elseif ($isEnd): ?>
                                                 <span class="badge bg-danger rounded-pill">Finish</span>
+                                                <?php elseif ($isIntermediate): ?>
+                                                <span class="badge bg-warning rounded-pill">Transit</span>
                                                 <?php else: ?>
-                                                <span class="badge bg-secondary rounded-pill"><?= $index ?></span>
+                                                <span class="badge bg-secondary rounded-pill"><?= $isIntermediate ? 'T' : $index ?></span>
                                                 <?php endif; ?>
                                             </div>
                                             <div class="flex-grow-1">
                                                 <h6 class="mb-1"><?= htmlspecialchars($destination['nama_destinasi']) ?></h6>
                                                 <small class="text-muted"><?= htmlspecialchars($destination['lokasi'] ?? '') ?></small>
+                                                <?php if ($isIntermediate): ?>
+                                                <br><small class="text-warning"><i class="fas fa-exchange-alt"></i> Destinasi perantara (rute alternatif)</small>
+                                                <?php endif; ?>
                                             </div>
                                             <?php if (!$isEnd): ?>
                                             <div class="ms-2">
