@@ -152,6 +152,23 @@ function buildGraph($pdo) {
  * @return array Hasil pencarian rute
  */
 function dijkstra($graph, $start, $end) {
+    // Validasi input
+    if (!isset($graph[$start])) {
+        return [
+            'found' => false,
+            'distance' => null,
+            'path' => []
+        ];
+    }
+    
+    if (!isset($graph[$end])) {
+        return [
+            'found' => false,
+            'distance' => null,
+            'path' => []
+        ];
+    }
+    
     // Inisialisasi
     $distances = [];
     $previous = [];
@@ -213,6 +230,13 @@ function dijkstra($graph, $start, $end) {
     
     while ($current !== null) {
         array_unshift($path, $current);
+        
+        // Validasi untuk mencegah undefined offset error
+        if (!isset($previous[$current])) {
+            // Jika current node tidak ada dalam $previous, berarti tidak ada path
+            break;
+        }
+        
         $current = $previous[$current];
     }
     
@@ -225,9 +249,12 @@ function dijkstra($graph, $start, $end) {
         ];
     }
     
+    // Validasi distance untuk end node
+    $finalDistance = isset($distances[$end]) && $distances[$end] !== PHP_FLOAT_MAX ? $distances[$end] : null;
+    
     return [
         'found' => true,
-        'distance' => $distances[$end],
+        'distance' => $finalDistance,
         'path' => $path
     ];
 }
