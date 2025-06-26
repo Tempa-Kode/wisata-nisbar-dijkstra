@@ -1,6 +1,6 @@
 <?php
   require_once 'user-handler/rute-perjalanan.php';
-  require_once 'user-handler/dijkstra-result.php';
+  require_once 'user-handler/dijkstra.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -43,6 +43,7 @@
 	<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
 	<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
 	<!-- =======================================================
   * Template Name: FlexStart
@@ -93,7 +94,7 @@
     						<div class="input-group">
     							<select class="form-select" name="titik_awal" id="titik_awal">
     								<option value="" selected hidden>pilih titik awal</option>
-    								<option value="lokasi_sekarang" id="lokasi_sekarang" <?php if ($_GET['titik_awal'] === 'lokasi_sekarang') echo 'selected'; ?>>📍 Lokasi saat ini</option>
+    								<option value="lokasi_sekarang" id="lokasi_sekarang" <?php if (isset($_GET['titik_awal']) && $_GET['titik_awal'] === 'lokasi_sekarang') echo 'selected'; ?>>📍 Lokasi saat ini</option>
     								<?php foreach ($destinasi as $d) : ?>
     								<option value="<?= $d['id'] ?>" <?php if (isset($_GET['titik_awal']) && $_GET['titik_awal'] === $d['id']) echo 'selected'; ?>><?= $d['nama_destinasi'] ?></option>
     								<?php endforeach; ?>
@@ -113,13 +114,90 @@
     	</div>
     </div><!-- End Page Title -->
 
+	<?php if ($routeResult): ?>
     <div class="container">
     	<div class="row gy-4 mb-3">
     		<div class="card p-4">
-    			<div id="map" style="width: 100%; height: 500px;"></div>
+				<?php if ($routeResult['success']): ?>
+					<div class="alert alert-success">
+						<h5><i class="fas fa-check-circle"></i> Rute Ditemukan!</h5>
+						Total estimasi jarak: <strong><?= round($routeResult['data']['route']['distance'], 2) ?> km</strong>
+					</div>
+
+					<div class="mb-3">
+						<h6><i class="fas fa-map-marker-alt"></i> Titik Awal Anda</h6>
+						<?php if (isset($routeResult['data']['user_location'])): ?>
+							<p class="mb-0">
+								Dari: <strong>Lokasi Saat Ini</strong>.
+								<br>
+								<small class="text-muted">Perjalanan dimulai dari destinasi terdekat yaitu <strong><?= htmlspecialchars($routeResult['data']['nearest_destination']['nama_destinasi']) ?></strong> (sekitar <?= round($routeResult['data']['nearest_destination']['distance_from_user'], 2) ?> km dari Anda).</small>
+							</p>
+						<?php elseif (isset($routeResult['data']['start_destination_details'])): ?>
+							<p class="mb-0">
+								Dari: <strong><?= htmlspecialchars($routeResult['data']['start_destination_details']['nama_destinasi']) ?></strong>
+							</p>
+						<?php endif; ?>
+					</div>
+
+					<?php if (isset($routeResult['data']['route']['route_type']) && $routeResult['data']['route']['route_type'] === 'alternative'): ?>
+						<div class="alert alert-info mb-3">
+							<h6 class="alert-heading"><i class="fas fa-info-circle"></i> Ini adalah Rute Alternatif</h6>
+							<p class="mb-1">Tidak ada rute langsung. Sistem mengarahkan Anda melalui <strong><?= htmlspecialchars($routeResult['data']['alternative_info']['intermediate_destination']['nama_destinasi']) ?></strong> (sekitar <?= round($routeResult['data']['alternative_info']['distance_to_intermediate'], 2) ?> km dari titik awal Anda).</p>
+						</div>
+					<?php endif; ?>
+
+					<div id="map" style="width: 100%; height: 500px;"></div>
+
+					<div class="route-details mt-3">
+						<h6><i class="fas fa-list-ol"></i> Jalur Perjalanan:</h6>
+						<div class="list-group">
+							<?php foreach ($routeResult['data']['route']['route_details'] as $index => $destination): ?>
+							<?php 
+							$isStart = $index === 0;
+							$isEnd = $index === count($routeResult['data']['route']['route_details']) - 1;
+							$isIntermediate = isset($routeResult['data']['route']['route_type']) && 
+											$routeResult['data']['route']['route_type'] === 'alternative' && 
+											$index === 1;
+							?>
+							<div class="list-group-item d-flex align-items-center">
+								<div class="me-3">
+									<?php if ($isStart): ?>
+									<span class="badge bg-primary rounded-pill">Start</span>
+									<?php elseif ($isEnd): ?>
+									<span class="badge bg-danger rounded-pill">Finish</span>
+									<?php elseif ($isIntermediate): ?>
+									<span class="badge bg-warning rounded-pill">Transit</span>
+									<?php else: ?>
+									<span class="badge bg-secondary rounded-pill"><?= $isIntermediate ? 'T' : $index ?></span>
+									<?php endif; ?>
+								</div>
+								<div class="flex-grow-1">
+									<h6 class="mb-1"><?= htmlspecialchars($destination['nama_destinasi']) ?></h6>
+									<small class="text-muted"><?= htmlspecialchars($destination['lokasi'] ?? '') ?></small>
+									<?php if ($isIntermediate): ?>
+									<br><small class="text-warning"><i class="fas fa-exchange-alt"></i> Destinasi perantara (rute alternatif)</small>
+									<?php endif; ?>
+								</div>
+								<?php if (!$isEnd): ?>
+								<div class="ms-2">
+									<i class="fas fa-arrow-down text-primary"></i>
+								</div>
+								<?php endif; ?>
+							</div>
+							<?php endforeach; ?>
+						</div>
+					</div>
+
+				<?php else: ?>
+					<div class="alert alert-danger">
+						<h5><i class="fas fa-exclamation-triangle"></i> Rute Tidak Ditemukan</h5>
+						<p><?= htmlspecialchars($routeResult['message']) ?></p>
+					</div>
+				<?php endif; ?>
     		</div>
     	</div>
     </div>
+	<?php endif; ?>
 
   </main>
 
@@ -180,172 +258,138 @@
 
   <!-- Main JS File -->
   <script src="assets/js/main.js"></script>
-  <script type="text/javascript">
-  	getLocation();
-  	const latitude = document.getElementById('latitude');
-  	const longitude = document.getElementById('longitude');
-  	const lokasiSekarang = document.getElementById('lokasi_sekarang');
 
-  	function getLocation() {
-  		if (navigator.geolocation) {
-  			navigator.geolocation.watchPosition(success, error);
-  		} else {
-  			alert("geolocation tidak didukung oleh browser ini.");
-  		}
-  	}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const titikAwal = document.getElementById('titik_awal');
+        const latitudeInput = document.getElementById('latitude');
+        const longitudeInput = document.getElementById('longitude');
 
-  	function success(position) {
-  		latitude.value = position.coords.latitude;
-  		longitude.value = position.coords.longitude;
-  		lokasiSekarang.textContent = `📍 Lokasi saat ini: ${position.coords.latitude}, ${position.coords.longitude}`;
-  	}
+        // Geolocation handler
+        titikAwal.addEventListener('change', function() {
+            if (this.value === 'lokasi_sekarang') {
+                if (navigator.geolocation) {
+                    this.disabled = true;
+                    const originalText = this.options[this.selectedIndex].text;
+                    this.options[this.selectedIndex].text = '📍 Mendapatkan lokasi...';
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            latitudeInput.value = position.coords.latitude;
+                            longitudeInput.value = position.coords.longitude;
+                            titikAwal.options[titikAwal.selectedIndex].text = originalText;
+                            titikAwal.disabled = false;
+                        },
+                        function(error) {
+                            alert('Gagal mendapatkan lokasi: ' + error.message);
+                            titikAwal.value = '';
+                            latitudeInput.value = '';
+                            longitudeInput.value = '';
+                            titikAwal.options[titikAwal.selectedIndex].text = originalText;
+                            titikAwal.disabled = false;
+                        },
+                        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                    );
+                } else {
+                    alert('Browser Anda tidak mendukung geolocation.');
+                    this.value = '';
+                }
+            } else {
+                // Clear lat/lon if not 'lokasi_sekarang'
+                latitudeInput.value = '';
+                longitudeInput.value = '';
+            }
+        });
 
-  	function error(error) {
-  		switch (error.code) {
-  			case error.PERMISSION_DENIED:
-  				alert("Anda menolak permintaan Geolokasi.");
-  				break;
-  			case error.POSITION_UNAVAILABLE:
-  				alert("Informasi lokasi tidak tersedia.");
-  				break;
-  			case error.TIMEOUT:
-  				alert("Permintaan untuk mendapatkan lokasi pengguna telah habis waktu.");
-  				break;
-  			case error.UNKNOWN_ERROR:
-  				alert("Terjadi kesalahan yang tidak diketahui.");
-  				break;
-  		}
-  	}
-  </script>
+        // Set initial state for geolocation if already selected
+        <?php if (isset($_GET['titik_awal']) && $_GET['titik_awal'] === 'lokasi_sekarang' && isset($_GET['latitude']) && isset($_GET['longitude'])): ?>
+        titikAwal.value = 'lokasi_sekarang';
+        latitudeInput.value = <?= $_GET['latitude'] ?>;
+        longitudeInput.value = <?= $_GET['longitude'] ?>;
+        // Optionally, if you want to keep the "Mendapatkan lokasi..." text on reload, you could set it here
+        // or just let it show the default selected option as it's already set by PHP.
+        <?php endif; ?>
 
-<script>
-    const rute = <?php echo json_encode($rute_terpendek); ?>;
-    const daftarDestinasi = <?php echo json_encode($daftar_destinasi); ?>;
+        // --- Logika untuk Peta Leaflet dengan Leaflet Routing Machine ---
+        <?php if ($routeResult && $routeResult['success']): ?>
+        const resultData = <?= json_encode($routeResult['data']) ?>;
+        const waypointsForMap = resultData.waypoints_for_map;
 
-    const koordinatRute = [];
-    const map = L.map('map');
-    
-    // Tambahkan tile layer terlebih dahulu
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
-    // Proses setiap titik dalam rute
-    rute.forEach((id, index) => {
-        let lat, lng, nama;
-
-        if (id === "koordinat_user") {
-            lat = <?php echo isset($lat_awal) ? $lat_awal : '0'; ?>;
-            lng = <?php echo isset($lng_awal) ? $lng_awal : '0'; ?>;
-            nama = "📍 Lokasi Anda";
-        } else if (daftarDestinasi[id]) {
-            lat = parseFloat(daftarDestinasi[id].lat);
-            lng = parseFloat(daftarDestinasi[id].lng);
-            nama = daftarDestinasi[id].nama_destinasi || daftarDestinasi[id].nama || `Destinasi ${id}`;
-        } else {
-            console.warn("ID tidak ditemukan dalam daftar destinasi:", id);
-            return; // Skip jika tidak ditemukan
-        }
-
-        // Validasi koordinat
-        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
-            console.warn("Koordinat tidak valid untuk:", nama, "lat:", lat, "lng:", lng);
-            return;
-        }
-
-        const point = L.latLng(lat, lng);
-        koordinatRute.push(point);
-
-        // Buat marker dengan icon yang berbeda untuk lokasi user dan destinasi
-        let markerIcon;
-        if (id === "koordinat_user") {
-            markerIcon = L.divIcon({
-                html: '<div style="background-color: #ff4444; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-            });
-        } else {
-            markerIcon = L.divIcon({
-                html: '<div style="background-color: #4CAF50; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-            });
-        }
-
-        const marker = L.marker(point).addTo(map);
-        
-        // Buat popup dengan informasi lebih detail
-        let popupContent = `<div style="text-align: center; min-width: 150px;">
-            <h6 style="margin: 0 0 8px 0; color: #333; font-weight: bold;">${nama}</h6>
-            <p style="margin: 0; font-size: 12px; color: #666;">
-                Lat: ${lat.toFixed(6)}<br>
-                Lng: ${lng.toFixed(6)}
-            </p>`;
-        
-        // Tambahkan nomor urut jika bukan lokasi user
-        if (id !== "koordinat_user") {
-            popupContent += `<p style="margin: 4px 0 0 0; font-size: 11px; color: #888;">
-                Urutan ke-${index + 1} dalam rute
-            </p>`;
-        }
-        
-        popupContent += `</div>`;
-        
-        marker.bindPopup(popupContent);
-
-        // Buka popup untuk titik awal
-        if (index === 0) {
-            marker.openPopup();
-        }
-    });
-
-    // Set view peta dan tambahkan routing
-    if (koordinatRute.length === 0) {
-        console.error("Tidak ada koordinat rute yang valid.");
-        // Set default view jika tidak ada koordinat
-        map.setView([1.0, 97.0], 10); // Koordinat umum Nias Barat
-    } else {
-        // Set view berdasarkan bounds dari semua titik
-        if (koordinatRute.length === 1) {
-            map.setView(koordinatRute[0], 15);
-        } else {
-            const group = new L.featureGroup(koordinatRute.map(coord => L.marker(coord)));
-            map.fitBounds(group.getBounds().pad(0.1));
-        }
-
-        // Tambahkan routing control
-        const routingControl = L.Routing.control({
-            waypoints: koordinatRute,
-            routeWhileDragging: false,
-            draggableWaypoints: false,
-            addWaypoints: false,
-            createMarker: function() { return null; }, // Jangan buat marker duplikat
-            lineOptions: {
-                styles: [{ color: '#2196F3', weight: 4, opacity: 0.8 }]
-            },
-            show: false, // Sembunyikan panel instruksi
-            collapsible: true
+        const map = L.map('map');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Sembunyikan panel routing instructions jika tidak diperlukan
-        setTimeout(() => {
-            const routingContainer = document.querySelector('.leaflet-routing-container');
-            if (routingContainer) {
-                routingContainer.style.display = 'none';
+        const leafletWaypoints = waypointsForMap.map(wp => L.latLng(wp.latitude, wp.longitude));
+
+        if (leafletWaypoints.length > 1) {
+            L.Routing.control({
+                waypoints: leafletWaypoints,
+                routeWhileDragging: true,
+                // geocoder: L.Control.Geocoder.nominatim(), // Uncomment if you add leaflet-control-geocoder.js
+                showAlternatives: true,
+                fitSelectedRoutes: 'smart',
+                plan: L.Routing.plan(leafletWaypoints, {
+                    createMarker: function(i, wp, n) {
+                        let marker;
+                        let popupText = '';
+                        
+                        // Find the corresponding detail from routeDetails based on waypoint index
+                        let originalDetail;
+                        if (resultData.user_location && i === 0) {
+                            popupText = '<b>📍 Lokasi Anda</b>';
+                        } else {
+                            // Adjust index to match routeDetails for display purposes
+                            let routeDetailIndex = i;
+                            if (resultData.user_location) { // If user_location was added as first waypoint
+                                routeDetailIndex = i - 1; 
+                            }
+                            
+                            if (resultData.route.route_details[routeDetailIndex]) {
+                                originalDetail = resultData.route.route_details[routeDetailIndex];
+                                popupText = `<b>${originalDetail.nama_destinasi}</b>`;
+                                if (i === 0 && !resultData.user_location) { // Starting point if not user_location
+                                    popupText += '<br><small>Titik Mulai Rute</small>';
+                                } else if (i === n - 1) { // End point
+                                    popupText += '<br><small>Tujuan Akhir</small>';
+                                } else if (resultData.route.route_type === 'alternative' && originalDetail.id == resultData.alternative_info.intermediate_destination.id) {
+                                    popupText += '<br><small>Titik Perantara Rute Alternatif</small>';
+                                }
+                            } else {
+                                // Fallback if no matching detail (e.g., if there's a point very close to user_location)
+                                popupText = `<b>Waypoint ${i+1}</b>`;
+                            }
+                        }
+
+                        marker = L.marker(wp.latLng);
+                        marker.bindPopup(popupText);
+                        
+                        return marker;
+                    }
+                })
+            }).addTo(map);
+        } else if (leafletWaypoints.length === 1) {
+            // If only one waypoint, just set view and add a single marker
+            map.setView(leafletWaypoints[0], 13);
+            let singleMarkerText = '';
+            if (resultData.user_location && waypointsForMap[0].latitude === resultData.user_location.latitude) {
+                singleMarkerText = '<b>📍 Lokasi Anda</b>';
+            } else if (resultData.start_destination_details) {
+                singleMarkerText = `<b>${resultData.start_destination_details.nama_destinasi}</b>`;
             }
-        }, 1000);
-    }
-
-    // Tambahkan event listener untuk marker clicks
-    map.on('popupopen', function(e) {
-        console.log('Popup dibuka untuk:', e.popup.getContent());
+            L.marker(leafletWaypoints[0]).addTo(map).bindPopup(singleMarkerText).openPopup();
+        } else {
+            // Default view if no waypoints
+            map.setView([0.5, 98.7], 8); // Example: Centered on North Sumatra / Medan area
+        }
+        <?php else: ?>
+            // Default map view when no route is displayed (e.g., on initial load or no route found)
+            const map = L.map('map').setView([0.5, 98.7], 8); // Example: Centered on North Sumatra / Medan area
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+        <?php endif; ?>
     });
-
-    // Debug: tampilkan informasi di console
-    console.log('Rute yang diproses:', rute);
-    console.log('Daftar destinasi:', daftarDestinasi);
-    console.log('Koordinat rute yang valid:', koordinatRute);
-</script>
+    </script>
 
 </body>
 
