@@ -53,7 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <div class="card mb-0">
                             <div class="card-body">
                                 <a href="#" class="text-nowrap logo-img text-center d-block py-3 w-100">
-                                    <img src="../assets/images/logos/dark-logo.svg" width="180" alt="">
+                                    <!-- <img src="../assets/images/logos/dark-logo.svg" width="180" alt=""> -->
+                                     <h1>ADMIN</h1>
                                 </a>
                                 <p class="text-center">Perutean Destinasi Wisata Nias Barat</p>
                                 <p class="text-center fw-bold">Login sebagai admin</p>
