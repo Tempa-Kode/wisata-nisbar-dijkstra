@@ -277,7 +277,11 @@ function findRoute($pdo, $titikAwal, $titikTujuan, $userLat = null, $userLon = n
             $result['message'] = 'Lokasi user tidak valid';
             return $result;
         }
-        $result['data']['user_location'] = ['latitude' => $userLat, 'longitude' => $userLon];
+        $result['data']['user_location'] = [
+            'latitude' => $userLat, 
+            'longitude' => $userLon,
+            'nama_destinasi' => 'Lokasi Saat Ini'
+        ];
         $startLatLng = ['latitude' => $userLat, 'longitude' => $userLon];
 
         $nearestDestination = findNearestDestination($pdo, $userLat, $userLon);
@@ -334,10 +338,18 @@ function findRoute($pdo, $titikAwal, $titikTujuan, $userLat = null, $userLon = n
                 // Tambahkan lokasi user sebagai waypoint pertama
                 $result['data']['waypoints_for_map'][] = $result['data']['user_location'];
                 // Kemudian destinasi terdekat sebagai waypoint kedua (yang merupakan start di Dijkstra)
-                $result['data']['waypoints_for_map'][] = ['latitude' => $nearestDestination['latitude'], 'longitude' => $nearestDestination['longitude']];
+                $result['data']['waypoints_for_map'][] = [
+                    'latitude' => $nearestDestination['latitude'], 
+                    'longitude' => $nearestDestination['longitude'],
+                    'nama_destinasi' => $nearestDestination['nama_destinasi']
+                ];
             } else {
                 // Jika titik awal bukan lokasi_sekarang, tambahkan titik awal yang dipilih
-                $result['data']['waypoints_for_map'][] = ['latitude' => $selectedStartDestination['latitude'], 'longitude' => $selectedStartDestination['longitude']];
+                $result['data']['waypoints_for_map'][] = [
+                    'latitude' => $selectedStartDestination['latitude'], 
+                    'longitude' => $selectedStartDestination['longitude'],
+                    'nama_destinasi' => $selectedStartDestination['nama_destinasi']
+                ];
             }
 
             foreach($routeDetails as $detail) {
@@ -351,7 +363,11 @@ function findRoute($pdo, $titikAwal, $titikTujuan, $userLat = null, $userLon = n
                 }
 
                 if (!$isDuplicate) {
-                    $result['data']['waypoints_for_map'][] = ['latitude' => $detail['latitude'], 'longitude' => $detail['longitude']];
+                    $result['data']['waypoints_for_map'][] = [
+                        'latitude' => $detail['latitude'], 
+                        'longitude' => $detail['longitude'],
+                        'nama_destinasi' => $detail['nama_destinasi']
+                    ];
                 }
             }
             return $result;
@@ -417,11 +433,19 @@ function findRoute($pdo, $titikAwal, $titikTujuan, $userLat = null, $userLon = n
         if ($titikAwal === 'lokasi_sekarang' && isset($result['data']['user_location'])) {
             $result['data']['waypoints_for_map'][] = $result['data']['user_location'];
         } else if (isset($selectedStartDestination)) {
-            $result['data']['waypoints_for_map'][] = ['latitude' => $selectedStartDestination['latitude'], 'longitude' => $selectedStartDestination['longitude']];
+            $result['data']['waypoints_for_map'][] = [
+                'latitude' => $selectedStartDestination['latitude'], 
+                'longitude' => $selectedStartDestination['longitude'],
+                'nama_destinasi' => $selectedStartDestination['nama_destinasi']
+            ];
         }
 
         foreach($routeDetails as $detail) {
-             $result['data']['waypoints_for_map'][] = ['latitude' => $detail['latitude'], 'longitude' => $detail['longitude']];
+             $result['data']['waypoints_for_map'][] = [
+                'latitude' => $detail['latitude'], 
+                'longitude' => $detail['longitude'],
+                'nama_destinasi' => $detail['nama_destinasi']
+            ];
         }
 
     } else {

@@ -290,7 +290,6 @@
         const resultData = <?= json_encode($routeResult['data']) ?>;
         const waypointsData = resultData.waypoints_for_map;
         const allWaypoints = waypointsData.map(wp => L.latLng(wp.latitude, wp.longitude));
-        
         const map = L.map('map');
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
