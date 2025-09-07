@@ -77,6 +77,14 @@ require_once 'components/header.php';
                             </a>
                         </li>
                         <li class="sidebar-item">
+                            <a class="sidebar-link" href="index.php?page=node/index" aria-expanded="false">
+                            <span>
+                              <i class="ti ti-article"></i>
+                            </span>
+                                <span class="hide-menu">Data Node</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
                             <a class="sidebar-link" href="index.php?page=rute/index" aria-expanded="false">
                             <span>
                               <i class="ti ti-article"></i>
