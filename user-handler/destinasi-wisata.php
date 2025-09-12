@@ -9,6 +9,7 @@ if($_SERVER['REQUEST_METHOD'] == 'GET' && empty($_GET['search'])) {
             kategori_destinasi 
         ON 
             destinasi.kategori_destinasi_id = kategori_destinasi.id 
+        WHERE jenis = 'wisata'
         ORDER BY id DESC"
     )->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -24,13 +25,14 @@ if($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['search'])) {
         ON 
             destinasi.kategori_destinasi_id = kategori_destinasi.id 
         WHERE 
-            destinasi.nama_destinasi LIKE :search
-        OR 
-            destinasi.lokasi LIKE :search
-        OR
-            kategori_destinasi.nama LIKE :search
+            (
+                destinasi.nama_destinasi LIKE :search
+                OR destinasi.lokasi LIKE :search
+                OR kategori_destinasi.nama LIKE :search
+            )
+            AND jenis = :jenis
         ORDER BY id DESC"
     );
-    $destinasi->execute(['search' => "%$search%"]);
+    $destinasi->execute(['search' => "%$search%", 'jenis' => 'wisata']);
     $destinasi = $destinasi->fetchAll(PDO::FETCH_ASSOC);
 }

@@ -48,6 +48,38 @@
         .leaflet-routing-container {
             display: none;
         }
+        
+        .route-option {
+            transition: all 0.3s ease;
+        }
+        
+        .route-option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .route-option.selected {
+            border-color: #007bff !important;
+            box-shadow: 0 0 10px rgba(0,123,255,0.3);
+        }
+
+        /* Custom marker styles */
+        .custom-div-icon {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        /* Route info styling */
+        .route-info-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 
@@ -81,21 +113,22 @@
                         <form action="" method="get" class="mt-4">
                             <input type="number" name="latitude" id="latitude" step="any" hidden>
                             <input type="number" name="longitude" id="longitude" step="any" hidden>
+                            <input type="hidden" name="multiple_routes" value="1">
                             <div class="input-group">
                                 <select class="form-select" name="titik_awal" id="titik_awal" required>
                                     <option value="" selected hidden>pilih titik awal</option>
                                     <option value="lokasi_sekarang" id="lokasi_sekarang" <?php if (isset($_GET['titik_awal']) && $_GET['titik_awal'] === 'lokasi_sekarang') echo 'selected'; ?>>📍 Lokasi saat ini</option>
-                                    <?php foreach ($destinasi as $d) : ?>
+                                    <?php foreach ($dataWisata as $d) : ?>
                                     <option value="<?= $d['id'] ?>" <?php if (isset($_GET['titik_awal']) && $_GET['titik_awal'] === $d['id']) echo 'selected'; ?>><?= $d['nama_destinasi'] ?></option>
                                     <?php endforeach; ?>
                                 </select>
                                 <select class="form-select" name="titik_tujuan" id="titik_tujuan" required>
                                     <option value="" selected hidden>pilih titik tujuan</option>
-                                    <?php foreach ($destinasi as $d) : ?>
+                                    <?php foreach ($dataWisata as $d) : ?>
                                     <option value="<?= $d['id'] ?>" <?php if (isset($_GET['titik_tujuan']) && $_GET['titik_tujuan'] === $d['id']) echo 'selected'; ?>><?= $d['nama_destinasi'] ?></option>
                                     <?php endforeach; ?>
                                 </select>
-                                <button type="submit" class="btn btn-outline-primary" id="button-addon2">Cari</button>
+                                <button type="submit" class="btn btn-outline-primary" id="button-addon2">Cari Rute</button>
                             </div>
                         </form>
                     </div>
@@ -109,7 +142,7 @@
         <div class="card p-4 shadow-sm">
             <?php if ($routeResult['success']): ?>
                 <div class="alert alert-success">
-                    <h5><i class="fas fa-check-circle"></i> Rute Ditemukan!</h5>
+                    <h5><i class="fas fa-check-circle"></i> <?= htmlspecialchars($routeResult['message']) ?></h5>
                 </div>
 
                 <div class="mb-3">
@@ -118,7 +151,7 @@
                         <p class="mb-0">
                             Dari: <strong>Lokasi Saat Ini</strong>.
                             <br>
-                            <small class="text-muted">Perjalanan dimulai dari destinasi terdekat yaitu <strong><?= htmlspecialchars($routeResult['data']['nearest_destination']['nama_destinasi']) ?></strong> (sekitar <?= round($routeResult['data']['nearest_destination']['distance_from_user'], 2) ?> km dari Anda).</small>
+                            <small class="text-muted">Perjalanan dimulai dari destinasi terdekat yaitu <strong><?= htmlspecialchars($routeResult['data']['start_destination_details']['nama_destinasi']) ?></strong>.</small>
                         </p>
                     <?php elseif (isset($routeResult['data']['start_destination_details'])): ?>
                         <p class="mb-0">
@@ -127,65 +160,39 @@
                     <?php endif; ?>
                 </div>
 
-                <?php if (isset($routeResult['data']['route']['route_type']) && $routeResult['data']['route']['route_type'] === 'alternative'): ?>
-                    <div class="alert alert-info mb-3">
-                        <h6 class="alert-heading"><i class="fas fa-info-circle"></i> Ini adalah Rute Alternatif</h6>
-                        <p class="mb-1">Tidak ada rute langsung. Sistem mengarahkan Anda melalui <strong><?= htmlspecialchars($routeResult['data']['alternative_info']['intermediate_destination']['nama_destinasi']) ?></strong> (sekitar <?= round($routeResult['data']['alternative_info']['distance_to_intermediate'], 2) ?> km dari titik awal Anda).</p>
-                    </div>
-                <?php endif; ?>
-
-                <div id="map"></div>
-
-                <div class="mt-4">
-                    <h4>Detail Rute</h4>
-                    <ul class="list-group">
-                        <li class="list-group-item" id="info-transit">Memuat info rute transit...</li>
-                        <li class="list-group-item" id="info-langsung" style="display: none;">Memuat info rute alternatif...</li>
-                    </ul>
-                    <div class="form-check form-switch mt-3">
-                        <input class="form-check-input" type="checkbox" role="switch" id="toggleRuteLangsung">
-                        <label class="form-check-label" for="toggleRuteLangsung">Tampilkan Rute Alternatif</label>
-                    </div>
-                </div>
-
-                <div class="route-details mt-3">
-                    <h6><i class="fas fa-list-ol"></i> Jalur Perjalanan:</h6>
-                    <div class="list-group">
-                        <?php foreach ($routeResult['data']['route']['route_details'] as $index => $destination): ?>
-                        <?php 
-                        $isStart = $index === 0;
-                        $isEnd = $index === count($routeResult['data']['route']['route_details']) - 1;
-                        $isIntermediate = isset($routeResult['data']['route']['route_type']) && 
-                                        $routeResult['data']['route']['route_type'] === 'alternative' && 
-                                        $index === 1;
-                        ?>
-                        <div class="list-group-item d-flex align-items-center">
-                            <div class="me-3">
-                                <?php if ($isStart): ?>
-                                <span class="badge bg-primary rounded-pill">Start</span>
-                                <?php elseif ($isEnd): ?>
-                                <span class="badge bg-danger rounded-pill">Finish</span>
-                                <?php elseif ($isIntermediate): ?>
-                                <span class="badge bg-warning rounded-pill">Transit</span>
-                                <?php else: ?>
-                                <span class="badge bg-secondary rounded-pill"><?= $isIntermediate ? 'T' : $index ?></span>
-                                <?php endif; ?>
+                <?php if (isset($routeResult['data']['routes']) && count($routeResult['data']['routes']) > 1): ?>
+                <div class="mb-4">
+                    <h5><i class="fas fa-route"></i> Pilihan Rute (<?= count($routeResult['data']['routes']) ?> rute tersedia)</h5>
+                    <div class="row">
+                        <?php foreach ($routeResult['data']['routes'] as $index => $route): ?>
+                        <div class="col-md-4 mb-3">
+                            <div class="card route-option" data-route-index="<?= $index ?>" style="cursor: pointer; border: 2px solid <?= $index === 0 ? '#007bff' : '#dee2e6' ?>;">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title"><?= htmlspecialchars($route['route_name']) ?></h6>
+                                    <p class="card-text">
+                                        <strong><?= round($route['distance'], 2) ?> km</strong><br>
+                                        <small class="text-muted"><?= count($route['path']) ?> destinasi</small>
+                                    </p>
+                                    <span class="badge <?= $route['route_type'] === 'direct' ? 'bg-success' : 'bg-warning' ?>">
+                                        <?= $route['route_type'] === 'direct' ? 'Langsung' : 'Alternatif' ?>
+                                    </span>
+                                </div>
                             </div>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1"><?= htmlspecialchars($destination['nama_destinasi']) ?></h6>
-                                <small class="text-muted"><?= htmlspecialchars($destination['lokasi'] ?? '') ?></small>
-                                <?php if ($isIntermediate): ?>
-                                <br><small class="text-warning"><i class="fas fa-exchange-alt"></i> Destinasi perantara (rute alternatif)</small>
-                                <?php endif; ?>
-                            </div>
-                            <?php if (!$isEnd): ?>
-                            <div class="ms-2">
-                                <i class="fas fa-arrow-down text-primary"></i>
-                            </div>
-                            <?php endif; ?>
                         </div>
                         <?php endforeach; ?>
                     </div>
+                </div>
+                <?php endif; ?>
+
+                <div style="position: relative;">
+                    <div id="map"></div>
+                    <div id="route-info-badge" class="route-info-badge" style="display: none;">
+                        <small id="route-info-text"></small>
+                    </div>
+                </div>
+
+                <div class="mt-4" id="route-details">
+                    <!-- Route details will be populated by JavaScript -->
                 </div>
                 
             <?php else: ?>
@@ -288,61 +295,235 @@
 
         <?php if ($routeResult && $routeResult['success']): ?>
         const resultData = <?= json_encode($routeResult['data']) ?>;
-        const waypointsData = resultData.waypoints_for_map;
-        const allWaypoints = waypointsData.map(wp => L.latLng(wp.latitude, wp.longitude));
-        const map = L.map('map');
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+        let currentRouteIndex = 0;
+        let routeControls = [];
+        let markers = [];
+        let map;
 
-        waypointsData.forEach((wp, i) => {
-            let popupText = `<b>${wp.nama_destinasi}</b>`;
-            if (i === 0) popupText = `<b>Titik Awal:</b><br>${wp.nama_destinasi}`;
-            if (i === waypointsData.length - 1) popupText = `<b>Tujuan Akhir:</b><br>${wp.nama_destinasi}`;
-            if (resultData.route.route_type === 'alternative' && i > 0 && i < waypointsData.length - 1) popupText += `<br><small>Titik Transit</small>`;
-            L.marker([wp.latitude, wp.longitude]).addTo(map).bindPopup(popupText);
-        });
+        // Initialize map
+        function initializeMap() {
+            map = L.map('map');
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+        }
 
-        // Rute 1: Transit (Dijkstra) - Selalu ditampilkan
-        L.Routing.control({
-            waypoints: allWaypoints,
-            fitSelectedRoutes: true,
-            routeWhileDragging: false,
-            addWaypoints: false,
-            lineOptions: { styles: [{color: '#0d6efd', opacity: 0.8, weight: 6}] },
-            createMarker: () => null
-        }).on('routesfound', function(e) {
-            const summary = e.routes[0].summary;
-            document.getElementById('info-transit').innerHTML = `<i class="fas fa-circle me-2" style="color: #0d6efd;"></i><strong>Rute Dijkstra:</strong> Jarak ${(summary.totalDistance / 1000).toFixed(2)} km, Estimasi ${Math.round(summary.totalTime / 60)} menit`;
-        }).addTo(map);
+        // Clear all markers and routes
+        function clearMap() {
+            // Remove all markers
+            markers.forEach(marker => {
+                map.removeLayer(marker);
+            });
+            markers = [];
 
-        // Rute 2: Langsung - Dikontrol oleh toggle
-        const directWaypoints = [allWaypoints[0], allWaypoints[allWaypoints.length - 1]];
-        const directRouteControl = L.Routing.control({
-            waypoints: directWaypoints,
-            fitSelectedRoutes: false,
-            routeWhileDragging: false,
-            addWaypoints: false,
-            lineOptions: { styles: [{color: '#198754', opacity: 0.8, weight: 6}] },
-            createMarker: () => null
-        }).on('routesfound', function(e) {
-            const summary = e.routes[0].summary;
-            document.getElementById('info-langsung').innerHTML = `<i class="fas fa-circle me-2" style="color: #198754;"></i><strong>Rute Alternatif:</strong> Jarak ${(summary.totalDistance / 1000).toFixed(2)} km, Estimasi ${Math.round(summary.totalTime / 60)} menit`;
-        });
+            // Remove all route controls
+            routeControls.forEach(control => {
+                if (map.hasLayer(control)) {
+                    map.removeControl(control);
+                }
+            });
+            routeControls = [];
+        }
 
-        // Logika Toggle
-        const toggleSwitch = document.getElementById('toggleRuteLangsung');
-        const infoLangsung = document.getElementById('info-langsung');
+        // Create custom marker icons
+        function createMarkerIcon(type, index) {
+            const colors = {
+                'start': '#28a745',
+                'end': '#dc3545', 
+                'waypoint': '#007bff',
+                'user': '#fd7e14'
+            };
+            
+            const color = colors[type] || '#6c757d';
+            
+            return L.divIcon({
+                html: `<div style="background-color: ${color}; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                    ${type === 'user' ? '📍' : (type === 'start' ? 'S' : (type === 'end' ? 'E' : index))}
+                </div>`,
+                className: 'custom-div-icon',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+        }
 
-        toggleSwitch.addEventListener('change', function() {
-            if (this.checked) {
-                directRouteControl.addTo(map);
-                infoLangsung.style.display = 'block';
-            } else {
-                map.removeControl(directRouteControl);
-                infoLangsung.style.display = 'none';
+        // Display route on map
+        function displayRoute(routeIndex) {
+            clearMap();
+
+            const route = resultData.routes[routeIndex];
+            const waypoints = [];
+            
+            // Add user location marker and waypoint if applicable
+            if (resultData.user_location) {
+                const userMarker = L.marker(
+                    [resultData.user_location.latitude, resultData.user_location.longitude],
+                    { icon: createMarkerIcon('user') }
+                ).addTo(map).bindPopup('<b>📍 Lokasi Anda Saat Ini</b>');
+                markers.push(userMarker);
+                waypoints.push(L.latLng(resultData.user_location.latitude, resultData.user_location.longitude));
             }
+
+            // Add destination markers and waypoints
+            route.route_details.forEach((dest, i) => {
+                const isStart = i === 0;
+                const isEnd = i === route.route_details.length - 1;
+                const markerType = isStart ? 'start' : (isEnd ? 'end' : 'waypoint');
+                
+                let popupText = `<b>${dest.nama_destinasi}</b><br>
+                    <small>${dest.lokasi || ''}</small><br>
+                    <small class="text-muted">Lat: ${dest.latitude}, Lng: ${dest.longitude}</small>`;
+                
+                if (isStart) {
+                    popupText = `<b>🚩 Titik Awal</b><br><b>${dest.nama_destinasi}</b><br>
+                        <small>${dest.lokasi || ''}</small><br>
+                        <small class="text-muted">Lat: ${dest.latitude}, Lng: ${dest.longitude}</small>`;
+                } else if (isEnd) {
+                    popupText = `<b>🏁 Tujuan Akhir</b><br><b>${dest.nama_destinasi}</b><br>
+                        <small>${dest.lokasi || ''}</small><br>
+                        <small class="text-muted">Lat: ${dest.latitude}, Lng: ${dest.longitude}</small>`;
+                } else {
+                    popupText = `<b>📍 Destinasi ${i}</b><br><b>${dest.nama_destinasi}</b><br>
+                        <small>${dest.lokasi || ''}</small><br>
+                        <small class="text-muted">Lat: ${dest.latitude}, Lng: ${dest.longitude}</small>`;
+                }
+
+                const marker = L.marker(
+                    [dest.latitude, dest.longitude],
+                    { icon: createMarkerIcon(markerType, i + 1) }
+                ).addTo(map).bindPopup(popupText);
+                
+                markers.push(marker);
+                waypoints.push(L.latLng(dest.latitude, dest.longitude));
+            });
+
+            // Create route line
+            const routeControl = L.Routing.control({
+                waypoints: waypoints,
+                fitSelectedRoutes: true,
+                routeWhileDragging: false,
+                addWaypoints: false,
+                lineOptions: { 
+                    styles: [{
+                        color: getRouteColor(routeIndex), 
+                        opacity: 0.8, 
+                        weight: 5,
+                        dashArray: route.route_type === 'alternative' ? '10, 5' : null
+                    }] 
+                },
+                createMarker: () => null // Don't create default markers
+            }).on('routesfound', function(e) {
+                const summary = e.routes[0].summary;
+                const distance = (summary.totalDistance / 1000).toFixed(2);
+                const time = Math.round(summary.totalTime / 60);
+                
+                // Update route info badge
+                const routeInfoBadge = document.getElementById('route-info-badge');
+                const routeInfoText = document.getElementById('route-info-text');
+                routeInfoText.innerHTML = `
+                    <strong style="color: ${getRouteColor(routeIndex)};">${route.route_name}</strong><br>
+                    📏 ${distance} km | ⏱️ ${time} menit
+                `;
+                routeInfoBadge.style.display = 'block';
+            });
+
+            routeControls.push(routeControl);
+            routeControl.addTo(map);
+
+            // Fit map to show all markers
+            if (markers.length > 0) {
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+
+        // Get color for route
+        function getRouteColor(index) {
+            const colors = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1'];
+            return colors[index % colors.length];
+        }
+
+        // Update route details display
+        function updateRouteDetails(routeIndex) {
+            const route = resultData.routes[routeIndex];
+            const detailsHtml = `
+                <h4><i class="fas fa-route"></i> Detail ${route.route_name}</h4>
+                <div class="route-details mt-3">
+                    <h6><i class="fas fa-list-ol"></i> Jalur Perjalanan:</h6>
+                    <div class="list-group">
+                        ${resultData.user_location ? `
+                        <div class="list-group-item d-flex align-items-center" style="background-color: #fff3cd;">
+                            <div class="me-3">
+                                <span style="background-color: #fd7e14; width: 30px; height: 30px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px;">📍</span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">Lokasi Anda Saat Ini</h6>
+                                <small class="text-muted">Koordinat: ${resultData.user_location.latitude}, ${resultData.user_location.longitude}</small>
+                            </div>
+                            <div class="ms-2">
+                                <i class="fas fa-arrow-down text-primary"></i>
+                            </div>
+                        </div>
+                        ` : ''}
+                        ${route.route_details.map((destination, index) => {
+                            const isStart = index === 0;
+                            const isEnd = index === route.route_details.length - 1;
+                            const markerColor = isStart ? '#28a745' : (isEnd ? '#dc3545' : '#007bff');
+                            const badgeText = isStart ? 'S' : (isEnd ? 'E' : (index + 1));
+                            const badgeClass = isStart ? 'bg-success' : (isEnd ? 'bg-danger' : 'bg-primary');
+                            
+                            return `
+                                <div class="list-group-item d-flex align-items-center">
+                                    <div class="me-3">
+                                        <span style="background-color: ${markerColor}; width: 30px; height: 30px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">${badgeText}</span>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">
+                                            ${destination.nama_destinasi}
+                                            ${isStart ? ' <span class="badge bg-success">Start</span>' : ''}
+                                            ${isEnd ? ' <span class="badge bg-danger">Finish</span>' : ''}
+                                        </h6>
+                                        <small class="text-muted">${destination.lokasi || ''}</small>
+                                    </div>
+                                    ${!isEnd ? '<div class="ms-2"><i class="fas fa-arrow-down text-primary"></i></div>' : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('route-details').innerHTML = detailsHtml;
+        }
+
+        // Handle route selection
+        function selectRoute(routeIndex) {
+            currentRouteIndex = routeIndex;
+            
+            // Update route option styling
+            document.querySelectorAll('.route-option').forEach((option, index) => {
+                option.style.border = index === routeIndex ? '2px solid #007bff' : '2px solid #dee2e6';
+                if (index === routeIndex) {
+                    option.classList.add('selected');
+                } else {
+                    option.classList.remove('selected');
+                }
+            });
+            
+            displayRoute(routeIndex);
+            updateRouteDetails(routeIndex);
+        }
+
+        // Initialize everything
+        initializeMap();
+        
+        // Add click handlers to route options
+        document.querySelectorAll('.route-option').forEach((option, index) => {
+            option.addEventListener('click', () => selectRoute(index));
         });
+
+        // Display first route by default
+        if (resultData.routes && resultData.routes.length > 0) {
+            selectRoute(0);
+        }
         <?php endif; ?>
     });
   </script>

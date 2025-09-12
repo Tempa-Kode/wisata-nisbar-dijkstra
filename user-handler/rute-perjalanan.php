@@ -1,9 +1,12 @@
 <?php
 require_once 'config/db.php';
 
-$destinasi = $pdo->query(
+$stmt = $pdo->prepare(
     "SELECT 
         *
     FROM destinasi
+    WHERE jenis = :jenis
     ORDER BY id DESC"
-)->fetchAll(PDO::FETCH_ASSOC);
+);
+$stmt->execute(['jenis' => 'wisata']);
+$dataWisata = $stmt->fetchAll(PDO::FETCH_ASSOC);
