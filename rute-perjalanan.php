@@ -123,6 +123,19 @@
         .route-info-badge.route-info-9 { border-left-color: #17a2b8; }
         .route-info-badge.route-info-10 { border-left-color: #28a745; }
         .route-info-badge.route-info-11 { border-left-color: #007bff; }
+
+        /* Direct routing styles */
+        .direct-route-active .route-option {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .direct-route-badge {
+            background: linear-gradient(135deg, #ff6b35, #ff8c42);
+            color: white;
+            border: none;
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -205,7 +218,15 @@
 
                 <?php if (isset($routeResult['data']['routes']) && count($routeResult['data']['routes']) > 1): ?>
                 <div class="mb-4">
-                    <h5><i class="fas fa-route"></i> Pilihan Rute (<?= count($routeResult['data']['routes']) ?> rute tersedia)</h5>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5><i class="fas fa-route"></i> Pilihan Rute (<?= count($routeResult['data']['routes']) ?> rute tersedia)</h5>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="enableDirectRoutingToggle">
+                            <label class="form-check-label" for="enableDirectRoutingToggle">
+                                <i class="fas fa-route"></i> Tampilkan Rute Langsung (API Leaflet)
+                            </label>
+                        </div>
+                    </div>
                     <div class="row">
                         <?php foreach ($routeResult['data']['routes'] as $index => $route): ?>
                         <div class="col-md-4 mb-3">
@@ -228,6 +249,42 @@
                             </div>
                         </div>
                         <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <?php if (isset($routeResult['data']['routes']) && count($routeResult['data']['routes']) == 1): ?>
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5><i class="fas fa-route"></i> Rute Ditemukan</h5>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="enableDirectRoutingToggleSingle">
+                            <label class="form-check-label" for="enableDirectRoutingToggleSingle">
+                                <i class="fas fa-route"></i> Tampilkan Rute Langsung (Leaflet)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <?php $route = $routeResult['data']['routes'][0]; ?>
+                        <div class="col-md-6 mb-3">
+                            <div class="card route-option route-color-0" data-route-index="0" style="cursor: pointer; border: 3px solid #007bff;">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="card-title mb-0"><?= htmlspecialchars($route['route_name']) ?></h6>
+                                        <span class="badge route-badge-0 ms-2">
+                                            Dijkstra
+                                        </span>
+                                    </div>
+                                    <p class="card-text">
+                                        <strong><?= round($route['distance'], 2) ?> km</strong><br>
+                                        <small class="text-muted"><?= count($route['path']) ?> destinasi</small>
+                                    </p>
+                                    <span class="badge bg-success">
+                                        Rute Terpendek
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -347,6 +404,8 @@
         let routeControls = [];
         let markers = [];
         let map;
+        let directRoutingEnabled = false;
+        let directRouteControl = null;
 
         // Initialize map
         function initializeMap() {
@@ -393,6 +452,16 @@
                 }
             });
             routeControls = [];
+
+            // Remove direct route control
+            if (directRouteControl && map.hasLayer(directRouteControl)) {
+                try {
+                    map.removeControl(directRouteControl);
+                } catch (e) {
+                    console.log('Error removing direct route control:', e);
+                }
+            }
+            directRouteControl = null;
             
             // Force remove any remaining route layers
             map.eachLayer(function(layer) {
@@ -429,7 +498,98 @@
             });
         }
 
-        // Display route on map
+        // Display direct route using Leaflet Routing Machine
+        function displayDirectRoute() {
+            console.log('Displaying direct route using Leaflet Routing Machine');
+            
+            // Clear previous routes
+            clearMap();
+            
+            // Get start and end coordinates
+            let startCoords, endCoords;
+            
+            if (resultData.user_location) {
+                startCoords = [resultData.user_location.latitude, resultData.user_location.longitude];
+            } else if (resultData.start_destination_details) {
+                startCoords = [resultData.start_destination_details.latitude, resultData.start_destination_details.longitude];
+            }
+            
+            if (resultData.routes && resultData.routes.length > 0) {
+                const firstRoute = resultData.routes[0];
+                const lastDestination = firstRoute.route_details[firstRoute.route_details.length - 1];
+                endCoords = [lastDestination.latitude, lastDestination.longitude];
+            }
+            
+            if (!startCoords || !endCoords) {
+                console.error('Could not determine start or end coordinates');
+                return;
+            }
+            
+            // Add start marker
+            const startMarker = L.marker(startCoords, { 
+                icon: createMarkerIcon(resultData.user_location ? 'user' : 'start') 
+            }).addTo(map).bindPopup(resultData.user_location ? 
+                '<b>📍 Lokasi Anda Saat Ini</b>' : 
+                `<b>🚩 Titik Awal</b><br><b>${resultData.start_destination_details.nama_destinasi}</b>`
+            );
+            markers.push(startMarker);
+            
+            // Add end marker
+            const endMarker = L.marker(endCoords, { 
+                icon: createMarkerIcon('end') 
+            }).addTo(map).bindPopup('<b>🏁 Tujuan Akhir</b><br><b>' + 
+                resultData.routes[0].route_details[resultData.routes[0].route_details.length - 1].nama_destinasi + 
+            '</b>');
+            markers.push(endMarker);
+            
+            // Create direct route using Leaflet Routing Machine
+            directRouteControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(startCoords[0], startCoords[1]),
+                    L.latLng(endCoords[0], endCoords[1])
+                ],
+                fitSelectedRoutes: true,
+                routeWhileDragging: false,
+                addWaypoints: false,
+                lineOptions: { 
+                    styles: [{
+                        color: '#ff6b35', 
+                        opacity: 0.9, 
+                        weight: 6,
+                        dashArray: '10, 5'
+                    }] 
+                },
+                createMarker: () => null, // Don't create default markers
+                show: false, // Don't show instructions panel
+                addWaypoints: false,
+                routeWhileDragging: false
+            }).on('routesfound', function(e) {
+                const summary = e.routes[0].summary;
+                const distance = (summary.totalDistance / 1000).toFixed(2);
+                const time = Math.round(summary.totalTime / 60);
+                
+                // Update route info badge
+                const routeInfoBadge = document.getElementById('route-info-badge');
+                const routeInfoText = document.getElementById('route-info-text');
+                routeInfoText.innerHTML = `
+                    <strong style="color: #ff6b35;">Rute Langsung (Leaflet)</strong><br>
+                    📏 ${distance} km | ⏱️ ${time} menit<br>
+                    <small class="text-muted">Rute otomatis dari layanan routing</small>
+                `;
+                
+                routeInfoBadge.className = 'route-info-badge';
+                routeInfoBadge.style.borderLeftColor = '#ff6b35';
+                routeInfoBadge.style.display = 'block';
+            }).addTo(map);
+            
+            // Fit map to show both markers
+            setTimeout(() => {
+                if (markers.length > 0) {
+                    const group = new L.featureGroup(markers);
+                    map.fitBounds(group.getBounds().pad(0.1));
+                }
+            }, 100);
+        }
         function displayRoute(routeIndex) {
             console.log('Displaying route', routeIndex);
             
@@ -607,8 +767,56 @@
             document.getElementById('route-details').innerHTML = detailsHtml;
         }
 
+        // Handle direct routing toggle
+        function handleDirectRoutingToggle(enabled) {
+            directRoutingEnabled = enabled;
+            
+            if (enabled) {
+                // Disable route selection cards
+                document.querySelectorAll('.route-option').forEach(option => {
+                    option.style.opacity = '0.5';
+                    option.style.pointerEvents = 'none';
+                    option.classList.remove('selected');
+                    option.style.border = '2px solid #dee2e6';
+                    option.style.boxShadow = 'none';
+                });
+                
+                // Display direct route
+                displayDirectRoute();
+                
+                // Update route details
+                document.getElementById('route-details').innerHTML = `
+                    <h4><i class="fas fa-route"></i> Rute Langsung (Leaflet Routing Machine)</h4>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Rute Otomatis</strong><br>
+                        Rute ini dihitung secara otomatis oleh layanan routing Leaflet berdasarkan jaringan jalan yang tersedia.
+                        Rute ini mungkin berbeda dari rute yang dihitung menggunakan algoritma Dijkstra karena:
+                        <ul class="mb-0 mt-2">
+                            <li>Menggunakan data jalan nyata dari OpenStreetMap</li>
+                            <li>Mempertimbangkan kondisi lalu lintas dan aksesibilitas jalan</li>
+                            <li>Memberikan rute tercepat berdasarkan jaringan jalan aktual</li>
+                        </ul>
+                    </div>
+                `;
+            } else {
+                // Enable route selection cards
+                document.querySelectorAll('.route-option').forEach(option => {
+                    option.style.opacity = '1';
+                    option.style.pointerEvents = 'auto';
+                });
+                
+                // Return to selected Dijkstra route
+                selectRoute(currentRouteIndex);
+            }
+        }
+
         // Handle route selection with improved logic
         function selectRoute(routeIndex) {
+            if (directRoutingEnabled) {
+                return; // Don't select routes when direct routing is enabled
+            }
+            
             currentRouteIndex = routeIndex;
             
             console.log(`Selecting route ${routeIndex}`); // Debug log
@@ -638,6 +846,22 @@
 
         // Initialize everything
         initializeMap();
+        
+        // Add direct routing toggle handler
+        const directRoutingToggle = document.getElementById('enableDirectRoutingToggle');
+        if (directRoutingToggle) {
+            directRoutingToggle.addEventListener('change', function() {
+                handleDirectRoutingToggle(this.checked);
+            });
+        }
+
+        // Add direct routing toggle handler for single route
+        const directRoutingToggleSingle = document.getElementById('enableDirectRoutingToggleSingle');
+        if (directRoutingToggleSingle) {
+            directRoutingToggleSingle.addEventListener('change', function() {
+                handleDirectRoutingToggle(this.checked);
+            });
+        }
         
         // Add click handlers to route options with proper event handling
         document.querySelectorAll('.route-option').forEach((option, index) => {
