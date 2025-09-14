@@ -51,6 +51,7 @@
         
         .route-option {
             transition: all 0.3s ease;
+            border-left: 5px solid transparent;
         }
         
         .route-option:hover {
@@ -59,9 +60,37 @@
         }
         
         .route-option.selected {
-            border-color: #007bff !important;
-            box-shadow: 0 0 10px rgba(0,123,255,0.3);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
         }
+
+        /* Route color classes */
+        .route-color-0 { border-left-color: #0d6efd !important; background: linear-gradient(90deg, rgba(13, 110, 253, 0.05) 0%, transparent 100%); }
+        .route-color-1 { border-left-color: #198754 !important; background: linear-gradient(90deg, rgba(25, 135, 84, 0.05) 0%, transparent 100%); }
+        .route-color-2 { border-left-color: #ffc107 !important; background: linear-gradient(90deg, rgba(255, 193, 7, 0.05) 0%, transparent 100%); }
+        .route-color-3 { border-left-color: #dc3545 !important; background: linear-gradient(90deg, rgba(220, 53, 69, 0.05) 0%, transparent 100%); }
+        .route-color-4 { border-left-color: #6f42c1 !important; background: linear-gradient(90deg, rgba(111, 66, 193, 0.05) 0%, transparent 100%); }
+        .route-color-5 { border-left-color: #fd7e14 !important; background: linear-gradient(90deg, rgba(253, 126, 20, 0.05) 0%, transparent 100%); }
+        .route-color-6 { border-left-color: #20c997 !important; background: linear-gradient(90deg, rgba(32, 201, 151, 0.05) 0%, transparent 100%); }
+        .route-color-7 { border-left-color: #e83e8c !important; background: linear-gradient(90deg, rgba(232, 62, 140, 0.05) 0%, transparent 100%); }
+        .route-color-8 { border-left-color: #6610f2 !important; background: linear-gradient(90deg, rgba(102, 16, 242, 0.05) 0%, transparent 100%); }
+        .route-color-9 { border-left-color: #17a2b8 !important; background: linear-gradient(90deg, rgba(23, 162, 184, 0.05) 0%, transparent 100%); }
+        .route-color-10 { border-left-color: #28a745 !important; background: linear-gradient(90deg, rgba(40, 167, 69, 0.05) 0%, transparent 100%); }
+        .route-color-11 { border-left-color: #007bff !important; background: linear-gradient(90deg, rgba(0, 123, 255, 0.05) 0%, transparent 100%); }
+
+        /* Route badge colors */
+        .route-badge-0 { background-color: #0d6efd; color: white; }
+        .route-badge-1 { background-color: #198754; color: white; }
+        .route-badge-2 { background-color: #ffc107; color: black; }
+        .route-badge-3 { background-color: #dc3545; color: white; }
+        .route-badge-4 { background-color: #6f42c1; color: white; }
+        .route-badge-5 { background-color: #fd7e14; color: white; }
+        .route-badge-6 { background-color: #20c997; color: white; }
+        .route-badge-7 { background-color: #e83e8c; color: white; }
+        .route-badge-8 { background-color: #6610f2; color: white; }
+        .route-badge-9 { background-color: #17a2b8; color: white; }
+        .route-badge-10 { background-color: #28a745; color: white; }
+        .route-badge-11 { background-color: #007bff; color: white; }
 
         /* Custom marker styles */
         .custom-div-icon {
@@ -75,11 +104,25 @@
             top: 10px;
             right: 10px;
             z-index: 1000;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #0d6efd;
         }
+
+        .route-info-badge.route-info-0 { border-left-color: #0d6efd; }
+        .route-info-badge.route-info-1 { border-left-color: #198754; }
+        .route-info-badge.route-info-2 { border-left-color: #ffc107; }
+        .route-info-badge.route-info-3 { border-left-color: #dc3545; }
+        .route-info-badge.route-info-4 { border-left-color: #6f42c1; }
+        .route-info-badge.route-info-5 { border-left-color: #fd7e14; }
+        .route-info-badge.route-info-6 { border-left-color: #20c997; }
+        .route-info-badge.route-info-7 { border-left-color: #e83e8c; }
+        .route-info-badge.route-info-8 { border-left-color: #6610f2; }
+        .route-info-badge.route-info-9 { border-left-color: #17a2b8; }
+        .route-info-badge.route-info-10 { border-left-color: #28a745; }
+        .route-info-badge.route-info-11 { border-left-color: #007bff; }
     </style>
 </head>
 
@@ -166,15 +209,20 @@
                     <div class="row">
                         <?php foreach ($routeResult['data']['routes'] as $index => $route): ?>
                         <div class="col-md-4 mb-3">
-                            <div class="card route-option" data-route-index="<?= $index ?>" style="cursor: pointer; border: 2px solid <?= $index === 0 ? '#007bff' : '#dee2e6' ?>;">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title"><?= htmlspecialchars($route['route_name']) ?></h6>
+                            <div class="card route-option route-color-<?= $index ?>" data-route-index="<?= $index ?>" style="cursor: pointer; border: 2px solid <?= $index === 0 ? '#007bff' : '#dee2e6' ?>;">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="card-title mb-0"><?= htmlspecialchars($route['route_name']) ?></h6>
+                                        <span class="badge route-badge-<?= $index ?> ms-2">
+                                            Route <?= $index + 1 ?>
+                                        </span>
+                                    </div>
                                     <p class="card-text">
                                         <strong><?= round($route['distance'], 2) ?> km</strong><br>
                                         <small class="text-muted"><?= count($route['path']) ?> destinasi</small>
                                     </p>
-                                    <span class="badge <?= $route['route_type'] === 'direct' ? 'bg-success' : 'bg-warning' ?>">
-                                        <?= $route['route_type'] === 'direct' ? 'Langsung' : 'Alternatif' ?>
+                                    <span class="badge <?= $route['route_type'] === 'direct' ? 'bg-success' : 'bg-secondary' ?>">
+                                        <?= $route['route_type'] === 'direct' ? 'Terpendek' : 'Alternatif' ?>
                                     </span>
                                 </div>
                             </div>
@@ -302,27 +350,62 @@
 
         // Initialize map
         function initializeMap() {
-            map = L.map('map');
+            map = L.map('map', {
+                zoomControl: true,
+                attributionControl: true
+            });
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
             }).addTo(map);
+            
+            // Disable default routing machine styling
+            const style = document.createElement('style');
+            style.innerHTML = `
+                .leaflet-routing-container { display: none !important; }
+                .leaflet-routing-alternatives-container { display: none !important; }
+            `;
+            document.head.appendChild(style);
         }
 
         // Clear all markers and routes
         function clearMap() {
             // Remove all markers
             markers.forEach(marker => {
-                map.removeLayer(marker);
+                try {
+                    if (map.hasLayer(marker)) {
+                        map.removeLayer(marker);
+                    }
+                } catch (e) {
+                    console.log('Error removing marker:', e);
+                }
             });
             markers = [];
 
             // Remove all route controls
             routeControls.forEach(control => {
-                if (map.hasLayer(control)) {
-                    map.removeControl(control);
+                try {
+                    if (control && map.hasLayer(control)) {
+                        map.removeControl(control);
+                    }
+                } catch (e) {
+                    console.log('Error removing route control:', e);
                 }
             });
             routeControls = [];
+            
+            // Force remove any remaining route layers
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // Hide route info badge
+            const routeInfoBadge = document.getElementById('route-info-badge');
+            if (routeInfoBadge) {
+                routeInfoBadge.style.display = 'none';
+            }
         }
 
         // Create custom marker icons
@@ -348,97 +431,127 @@
 
         // Display route on map
         function displayRoute(routeIndex) {
-            clearMap();
-
-            const route = resultData.routes[routeIndex];
-            const waypoints = [];
+            console.log('Displaying route', routeIndex);
             
-            // Add user location marker and waypoint if applicable
-            if (resultData.user_location) {
-                const userMarker = L.marker(
-                    [resultData.user_location.latitude, resultData.user_location.longitude],
-                    { icon: createMarkerIcon('user') }
-                ).addTo(map).bindPopup('<b>📍 Lokasi Anda Saat Ini</b>');
-                markers.push(userMarker);
-                waypoints.push(L.latLng(resultData.user_location.latitude, resultData.user_location.longitude));
-            }
-
-            // Add destination markers and waypoints
-            route.route_details.forEach((dest, i) => {
-                const isStart = i === 0;
-                const isEnd = i === route.route_details.length - 1;
-                const markerType = isStart ? 'start' : (isEnd ? 'end' : 'waypoint');
+            // Clear previous route completely first
+            clearMap();
+            
+            // Small delay to ensure clearing is complete
+            setTimeout(() => {
+                const route = resultData.routes[routeIndex];
+                const waypoints = [];
                 
-                let popupText = `<b>${dest.nama_destinasi}</b><br>
-                    <small>${dest.lokasi || ''}</small><br>
-                    <small class="text-muted">Lat: ${dest.latitude}, Lng: ${dest.longitude}</small>`;
-                
-                if (isStart) {
-                    popupText = `<b>🚩 Titik Awal</b><br><b>${dest.nama_destinasi}</b><br>
-                        <small>${dest.lokasi || ''}</small><br>
-                        <small class="text-muted">Lat: ${dest.latitude}, Lng: ${dest.longitude}</small>`;
-                } else if (isEnd) {
-                    popupText = `<b>🏁 Tujuan Akhir</b><br><b>${dest.nama_destinasi}</b><br>
-                        <small>${dest.lokasi || ''}</small><br>
-                        <small class="text-muted">Lat: ${dest.latitude}, Lng: ${dest.longitude}</small>`;
-                } else {
-                    popupText = `<b>📍 Destinasi ${i}</b><br><b>${dest.nama_destinasi}</b><br>
-                        <small>${dest.lokasi || ''}</small><br>
-                        <small class="text-muted">Lat: ${dest.latitude}, Lng: ${dest.longitude}</small>`;
+                // Add user location marker and waypoint if applicable
+                if (resultData.user_location) {
+                    const userMarker = L.marker(
+                        [resultData.user_location.latitude, resultData.user_location.longitude],
+                        { icon: createMarkerIcon('user') }
+                    ).addTo(map).bindPopup('<b>📍 Lokasi Anda Saat Ini</b>');
+                    markers.push(userMarker);
+                    waypoints.push(L.latLng(resultData.user_location.latitude, resultData.user_location.longitude));
                 }
 
-                const marker = L.marker(
-                    [dest.latitude, dest.longitude],
-                    { icon: createMarkerIcon(markerType, i + 1) }
-                ).addTo(map).bindPopup(popupText);
+                // Add destination markers and waypoints
+                route.route_details.forEach((dest, i) => {
+                    const isStart = i === 0;
+                    const isEnd = i === route.route_details.length - 1;
+                    const markerType = isStart ? 'start' : (isEnd ? 'end' : 'waypoint');
+                    
+                    let popupText = `<b>${dest.nama_destinasi}</b><br>
+                        <small>${dest.lokasi || ''}</small><br>
+                        <small class="text-muted">Lat: ${dest.latitude}, Lng: ${dest.longitude}</small>`;
+                    
+                    if (isStart) {
+                        popupText = `<b>🚩 Titik Awal</b><br><b>${dest.nama_destinasi}</b><br>
+                            <small>${dest.lokasi || ''}</small><br>
+                            <small class="text-muted">Lat: ${dest.latitude}, Lng: ${dest.longitude}</small>`;
+                    } else if (isEnd) {
+                        popupText = `<b>🏁 Tujuan Akhir</b><br><b>${dest.nama_destinasi}</b><br>
+                            <small>${dest.lokasi || ''}</small><br>
+                            <small class="text-muted">Lat: ${dest.latitude}, Lng: ${dest.longitude}</small>`;
+                    } else {
+                        popupText = `<b>📍 Destinasi ${i}</b><br><b>${dest.nama_destinasi}</b><br>
+                            <small>${dest.lokasi || ''}</small><br>
+                            <small class="text-muted">Lat: ${dest.latitude}, Lng: ${dest.longitude}</small>`;
+                    }
+
+                    const marker = L.marker(
+                        [dest.latitude, dest.longitude],
+                        { icon: createMarkerIcon(markerType, i + 1) }
+                    ).addTo(map).bindPopup(popupText);
+                    
+                    markers.push(marker);
+                    waypoints.push(L.latLng(dest.latitude, dest.longitude));
+                });
+
+                // Create route line with unique color
+                const routeColor = getRouteColor(routeIndex);
+                const routeControl = L.Routing.control({
+                    waypoints: waypoints,
+                    fitSelectedRoutes: true,
+                    routeWhileDragging: false,
+                    addWaypoints: false,
+                    lineOptions: { 
+                        styles: [{
+                            color: routeColor, 
+                            opacity: 0.9, 
+                            weight: 7,
+                            dashArray: route.route_type === 'alternative' ? '15, 8' : null
+                        }] 
+                    },
+                    createMarker: () => null, // Don't create default markers
+                    show: false, // Don't show instructions panel
+                    addWaypoints: false,
+                    routeWhileDragging: false
+                }).on('routesfound', function(e) {
+                    const summary = e.routes[0].summary;
+                    const distance = (summary.totalDistance / 1000).toFixed(2);
+                    const time = Math.round(summary.totalTime / 60);
+                    
+                    // Update route info badge
+                    const routeInfoBadge = document.getElementById('route-info-badge');
+                    const routeInfoText = document.getElementById('route-info-text');
+                    routeInfoText.innerHTML = `
+                        <strong style="color: ${routeColor};">${route.route_name}</strong><br>
+                        📏 ${distance} km | ⏱️ ${time} menit
+                    `;
+                    
+                    // Update route info badge color
+                    routeInfoBadge.className = `route-info-badge route-info-${routeIndex}`;
+                    routeInfoBadge.style.display = 'block';
+                });
+
+                // Add to map and store reference
+                routeControls.push(routeControl);
+                routeControl.addTo(map);
+
+                // Fit map to show all markers with some padding
+                setTimeout(() => {
+                    if (markers.length > 0) {
+                        const group = new L.featureGroup(markers);
+                        map.fitBounds(group.getBounds().pad(0.1));
+                    }
+                }, 100);
                 
-                markers.push(marker);
-                waypoints.push(L.latLng(dest.latitude, dest.longitude));
-            });
-
-            // Create route line
-            const routeControl = L.Routing.control({
-                waypoints: waypoints,
-                fitSelectedRoutes: true,
-                routeWhileDragging: false,
-                addWaypoints: false,
-                lineOptions: { 
-                    styles: [{
-                        color: getRouteColor(routeIndex), 
-                        opacity: 0.8, 
-                        weight: 5,
-                        dashArray: route.route_type === 'alternative' ? '10, 5' : null
-                    }] 
-                },
-                createMarker: () => null // Don't create default markers
-            }).on('routesfound', function(e) {
-                const summary = e.routes[0].summary;
-                const distance = (summary.totalDistance / 1000).toFixed(2);
-                const time = Math.round(summary.totalTime / 60);
-                
-                // Update route info badge
-                const routeInfoBadge = document.getElementById('route-info-badge');
-                const routeInfoText = document.getElementById('route-info-text');
-                routeInfoText.innerHTML = `
-                    <strong style="color: ${getRouteColor(routeIndex)};">${route.route_name}</strong><br>
-                    📏 ${distance} km | ⏱️ ${time} menit
-                `;
-                routeInfoBadge.style.display = 'block';
-            });
-
-            routeControls.push(routeControl);
-            routeControl.addTo(map);
-
-            // Fit map to show all markers
-            if (markers.length > 0) {
-                const group = new L.featureGroup(markers);
-                map.fitBounds(group.getBounds().pad(0.1));
-            }
+            }, 100); // Small delay to ensure proper clearing
         }
 
         // Get color for route
         function getRouteColor(index) {
-            const colors = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1'];
+            const colors = [
+                '#0d6efd', // Blue
+                '#198754', // Green  
+                '#ffc107', // Yellow
+                '#dc3545', // Red
+                '#6f42c1', // Purple
+                '#fd7e14', // Orange
+                '#20c997', // Teal
+                '#e83e8c', // Pink
+                '#6610f2', // Indigo
+                '#17a2b8', // Cyan
+                '#28a745', // Success Green
+                '#007bff'  // Primary Blue
+            ];
             return colors[index % colors.length];
         }
 
@@ -494,35 +607,58 @@
             document.getElementById('route-details').innerHTML = detailsHtml;
         }
 
-        // Handle route selection
+        // Handle route selection with improved logic
         function selectRoute(routeIndex) {
             currentRouteIndex = routeIndex;
             
+            console.log(`Selecting route ${routeIndex}`); // Debug log
+            
             // Update route option styling
             document.querySelectorAll('.route-option').forEach((option, index) => {
-                option.style.border = index === routeIndex ? '2px solid #007bff' : '2px solid #dee2e6';
+                option.classList.remove('selected');
+                option.style.border = '2px solid #dee2e6';
+                option.style.boxShadow = 'none';
+                
                 if (index === routeIndex) {
                     option.classList.add('selected');
-                } else {
-                    option.classList.remove('selected');
+                    option.style.border = `3px solid ${getRouteColor(index)}`;
+                    option.style.boxShadow = `0 0 15px ${getRouteColor(index)}33`;
                 }
             });
             
-            displayRoute(routeIndex);
-            updateRouteDetails(routeIndex);
+            // Clear map completely before showing new route
+            clearMap();
+            
+            // Display new route with delay to ensure clearing is complete
+            setTimeout(() => {
+                displayRoute(routeIndex);
+                updateRouteDetails(routeIndex);
+            }, 150);
         }
 
         // Initialize everything
         initializeMap();
         
-        // Add click handlers to route options
+        // Add click handlers to route options with proper event handling
         document.querySelectorAll('.route-option').forEach((option, index) => {
-            option.addEventListener('click', () => selectRoute(index));
+            // Remove any existing event listeners
+            option.replaceWith(option.cloneNode(true));
+        });
+        
+        // Re-add event listeners to fresh nodes
+        document.querySelectorAll('.route-option').forEach((option, index) => {
+            option.addEventListener('click', function(e) {
+                e.preventDefault();
+                selectRoute(index);
+            });
         });
 
         // Display first route by default
         if (resultData.routes && resultData.routes.length > 0) {
-            selectRoute(0);
+            // Initialize first route as selected
+            setTimeout(() => {
+                selectRoute(0);
+            }, 100);
         }
         <?php endif; ?>
     });

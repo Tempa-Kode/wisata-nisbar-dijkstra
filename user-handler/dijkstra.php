@@ -283,9 +283,61 @@ function getRouteDetails($pdo, $path) {
 
 
 /**
- * Fungsi untuk mencari beberapa rute alternatif
+ * Mencari semua kemungkinan path dari start ke end dengan pruning
  */
-function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $userLon = null, $maxRoutes = 3) {
+function findAllPaths($graph, $currentNode, $end, $visited, $path, $distance, &$allRoutes, $maxPathLength) {
+    // Base case: jika sudah sampai tujuan
+    if ($currentNode == $end) {
+        $allRoutes[] = [
+            'path' => $path,
+            'distance' => $distance
+        ];
+        return;
+    }
+    
+    // Pruning: jika path terlalu panjang
+    if (count($path) >= $maxPathLength) {
+        return;
+    }
+    
+    // Eksplorasi neighbors
+    if (isset($graph[$currentNode])) {
+        foreach ($graph[$currentNode] as $neighbor => $weight) {
+            // Hindari cycle (kecuali untuk tujuan akhir)
+            if (!in_array($neighbor, $visited) || $neighbor == $end) {
+                $newVisited = $visited;
+                $newVisited[] = $neighbor;
+                $newPath = $path;
+                $newPath[] = $neighbor;
+                $newDistance = $distance + $weight;
+                
+                findAllPaths($graph, $neighbor, $end, $newVisited, $newPath, $newDistance, $allRoutes, $maxPathLength);
+            }
+        }
+    }
+}
+
+/**
+ * Mencari semua kemungkinan rute menggunakan K-shortest paths algorithm
+ */
+function findAllPossibleRoutes($graph, $start, $end, $maxRoutes = 5, $maxPathLength = 6) {
+    $allRoutes = [];
+    
+    // Mulai pencarian dari start node
+    findAllPaths($graph, $start, $end, [$start], [$start], 0, $allRoutes, $maxPathLength);
+    
+    // Sort berdasarkan jarak dan ambil maksimal sesuai limit
+    usort($allRoutes, function($a, $b) {
+        return $a['distance'] <=> $b['distance'];
+    });
+    
+    return array_slice($allRoutes, 0, $maxRoutes);
+}
+
+/**
+ * Fungsi untuk mencari beberapa rute alternatif (versi yang diperbaiki)
+ */
+function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $userLon = null, $maxRoutes = 8) {
     $graph = buildGraph($pdo);
     $routes = [];
     
@@ -317,67 +369,36 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
         return ['success' => false, 'message' => 'Titik awal dan tujuan tidak boleh sama', 'data' => []];
     }
 
-    // Rute pertama: rute terpendek langsung
-    $firstRoute = dijkstra($graph, $titikAwalGraph, $titikTujuan);
-    if ($firstRoute['found']) {
-        $routeDetails = getRouteDetails($pdo, $firstRoute['path']);
-        $routes[] = [
-            'distance' => $firstRoute['distance'],
-            'path' => $firstRoute['path'],
-            'route_details' => $routeDetails,
-            'route_type' => 'direct',
-            'route_name' => 'Rute Terpendek'
-        ];
-    }
-
-    // Rute alternatif 1: hapus edge pertama dari rute terpendek
-    if ($firstRoute['found'] && count($firstRoute['path']) > 2 && count($routes) < $maxRoutes) {
-        $altGraph1 = $graph;
-        $from = $firstRoute['path'][0];
-        $to = $firstRoute['path'][1];
-        if (isset($altGraph1[$from][$to])) {
-            unset($altGraph1[$from][$to]);
-            unset($altGraph1[$to][$from]);
+    // Cari semua kemungkinan rute menggunakan algoritma yang lebih komprehensif
+    $allPossibleRoutes = findAllPossibleRoutes($graph, $titikAwalGraph, $titikTujuan, $maxRoutes + 3, 5);
+    
+    if (!empty($allPossibleRoutes)) {
+        $routeCounter = 1;
+        
+        foreach ($allPossibleRoutes as $index => $route) {
+            $routeDetails = getRouteDetails($pdo, $route['path']);
             
-            $secondRoute = dijkstra($altGraph1, $titikAwalGraph, $titikTujuan);
-            if ($secondRoute['found']) {
-                $routeDetails = getRouteDetails($pdo, $secondRoute['path']);
-                $routes[] = [
-                    'distance' => $secondRoute['distance'],
-                    'path' => $secondRoute['path'],
-                    'route_details' => $routeDetails,
-                    'route_type' => 'alternative',
-                    'route_name' => 'Rute Alternatif 1'
-                ];
+            // Tentukan tipe rute
+            $routeType = ($index === 0) ? 'direct' : 'alternative';
+            $routeName = ($index === 0) ? 'Rute Terpendek' : 'Rute Alternatif ' . $index;
+            
+            // Jika rute hanya 2 node (langsung), beri nama khusus
+            if (count($route['path']) == 2) {
+                $routeName = ($index === 0) ? 'Rute Langsung' : 'Rute Langsung Alt.';
+                $routeType = 'direct';
             }
+            
+            $routes[] = [
+                'distance' => $route['distance'],
+                'path' => $route['path'],
+                'route_details' => $routeDetails,
+                'route_type' => $routeType,
+                'route_name' => $routeName
+            ];
         }
     }
 
-    // Rute alternatif 2: hapus edge di tengah rute terpendek
-    if ($firstRoute['found'] && count($firstRoute['path']) > 3 && count($routes) < $maxRoutes) {
-        $altGraph2 = $graph;
-        $midIndex = floor(count($firstRoute['path']) / 2);
-        $from = $firstRoute['path'][$midIndex - 1];
-        $to = $firstRoute['path'][$midIndex];
-        if (isset($altGraph2[$from][$to])) {
-            unset($altGraph2[$from][$to]);
-            unset($altGraph2[$to][$from]);
-            
-            $thirdRoute = dijkstra($altGraph2, $titikAwalGraph, $titikTujuan);
-            if ($thirdRoute['found']) {
-                $routeDetails = getRouteDetails($pdo, $thirdRoute['path']);
-                $routes[] = [
-                    'distance' => $thirdRoute['distance'],
-                    'path' => $thirdRoute['path'],
-                    'route_details' => $routeDetails,
-                    'route_type' => 'alternative',
-                    'route_name' => 'Rute Alternatif 2'
-                ];
-            }
-        }
-    }
-
-    // Jika tidak ada rute langsung, cari rute melalui node intermediate
+    // Jika masih belum ada rute, coba cari rute melalui node intermediate
     if (empty($routes)) {
         $nearestConnected = findNearestConnectedDestination($pdo, $graph, $titikAwalGraph);
         if ($nearestConnected) {
@@ -400,7 +421,7 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
                     'path' => $fullPath,
                     'route_details' => $routeDetails,
                     'route_type' => 'alternative',
-                    'route_name' => 'Rute Alternatif'
+                    'route_name' => 'Rute via Destinasi Terdekat'
                 ];
             }
         }
@@ -408,16 +429,63 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
 
     // Prepare result with multiple routes
     if (!empty($routes)) {
+        // Remove duplicate routes (same path) and similar routes (same nodes, different order)
+        $uniqueRoutes = [];
+        $seenPaths = [];
+        $seenNodeSets = [];
+        
+        foreach ($routes as $route) {
+            $pathKey = implode('-', $route['path']);
+            
+            // Skip exact duplicate paths
+            if (in_array($pathKey, $seenPaths)) {
+                continue;
+            }
+            
+            // Check for routes with same nodes but different order
+            $nodeSet = array_slice($route['path'], 1, -1); // Get intermediate nodes (exclude start and end)
+            sort($nodeSet); // Sort to create consistent key
+            $nodeSetKey = implode('-', $nodeSet);
+            
+            // If we've seen this set of intermediate nodes before
+            if (isset($seenNodeSets[$nodeSetKey])) {
+                // Compare distances and keep the shorter one
+                $existingRouteIndex = $seenNodeSets[$nodeSetKey];
+                if ($route['distance'] < $uniqueRoutes[$existingRouteIndex]['distance']) {
+                    // Replace with shorter route
+                    $uniqueRoutes[$existingRouteIndex] = $route;
+                }
+                // Skip this route if it's longer
+                continue;
+            }
+            
+            // Add new route
+            $uniqueRoutes[] = $route;
+            $seenPaths[] = $pathKey;
+            $seenNodeSets[$nodeSetKey] = count($uniqueRoutes) - 1; // Store index of this route
+        }
+        
         // Sort routes by distance
-        usort($routes, function($a, $b) {
+        usort($uniqueRoutes, function($a, $b) {
             return $a['distance'] <=> $b['distance'];
         });
 
+        // Rename routes berdasarkan urutan jarak
+        foreach ($uniqueRoutes as $index => &$route) {
+            if ($index === 0) {
+                $route['route_name'] = count($route['path']) == 2 ? 'Rute Langsung' : 'Rute Terpendek';
+                $route['route_type'] = 'direct';
+            } else {
+                $route['route_name'] = 'Rute Alternatif ' . $index;
+                $route['route_type'] = 'alternative';
+            }
+        }
+
         $result = [
             'success' => true,
-            'message' => count($routes) > 1 ? 'Beberapa rute berhasil ditemukan' : 'Rute berhasil ditemukan',
+            'message' => count($uniqueRoutes) > 1 ? count($uniqueRoutes) . ' rute berhasil ditemukan' : 'Rute berhasil ditemukan',
             'data' => [
-                'routes' => $routes,
+                'routes' => $uniqueRoutes,
                 'start_destination_details' => $startDestination,
                 'target_destination_details' => null
             ]
