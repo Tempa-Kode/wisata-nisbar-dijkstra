@@ -242,8 +242,8 @@
                                         <strong><?= round($route['distance'], 2) ?> km</strong><br>
                                         <small class="text-muted"><?= count($route['path']) ?> destinasi</small>
                                     </p>
-                                    <span class="badge <?= $route['route_type'] === 'direct' ? 'bg-success' : 'bg-secondary' ?>">
-                                        <?= $route['route_type'] === 'direct' ? 'Terpendek' : 'Alternatif' ?>
+                                    <span class="badge bg-secondary">
+                                        Alternatif
                                     </span>
                                 </div>
                             </div>
@@ -279,8 +279,8 @@
                                         <strong><?= round($route['distance'], 2) ?> km</strong><br>
                                         <small class="text-muted"><?= count($route['path']) ?> destinasi</small>
                                     </p>
-                                    <span class="badge bg-success">
-                                        Rute Terpendek
+                                    <span class="badge bg-secondary">
+                                        Rute Alternatif
                                     </span>
                                 </div>
                             </div>

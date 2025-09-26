@@ -378,12 +378,24 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
         foreach ($allPossibleRoutes as $index => $route) {
             $routeDetails = getRouteDetails($pdo, $route['path']);
             
+            // Hitung total jarak
+            $totalDistance = $route['distance'];
+            
+            // Jika titik awal adalah lokasi sekarang, tambahkan jarak dari user ke destinasi terdekat
+            if ($titikAwal === 'lokasi_sekarang') {
+                $distanceToNearestDestination = haversineDistance(
+                    $userLat, $userLon,
+                    $startDestination['latitude'], $startDestination['longitude']
+                );
+                $totalDistance += $distanceToNearestDestination;
+            }
+            
             // Semua rute adalah alternatif dengan nomor berurut
             $routeType = 'alternative';
             $routeName = 'Rute Alternatif ' . ($index + 1);
             
             $routes[] = [
-                'distance' => $route['distance'],
+                'distance' => $totalDistance,
                 'path' => $route['path'],
                 'route_details' => $routeDetails,
                 'route_type' => $routeType,
@@ -405,17 +417,31 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
                 $fullPath = array_merge($fullPath, array_slice($dijkstraResult['path'], 1));
                 
                 $routeDetails = getRouteDetails($pdo, $fullPath);
-                $totalDistance = haversineDistance(
-                    $startDestination['latitude'], $startDestination['longitude'],
-                    $nearestConnected['latitude'], $nearestConnected['longitude']
-                ) + $dijkstraResult['distance'];
+                
+                // Hitung total jarak
+                $totalDistance = $dijkstraResult['distance'];
+                
+                // Jika titik awal adalah lokasi sekarang, tambahkan jarak dari user ke destinasi terdekat
+                if ($titikAwal === 'lokasi_sekarang') {
+                    $distanceToNearestDestination = haversineDistance(
+                        $userLat, $userLon,
+                        $startDestination['latitude'], $startDestination['longitude']
+                    );
+                    $totalDistance += $distanceToNearestDestination;
+                } else {
+                    // Jika titik awal bukan lokasi sekarang, tambahkan jarak ke nearest connected
+                    $totalDistance += haversineDistance(
+                        $startDestination['latitude'], $startDestination['longitude'],
+                        $nearestConnected['latitude'], $nearestConnected['longitude']
+                    );
+                }
                 
                 $routes[] = [
                     'distance' => $totalDistance,
                     'path' => $fullPath,
                     'route_details' => $routeDetails,
                     'route_type' => 'alternative',
-                    'route_name' => 'Rute via Destinasi Terdekat'
+                    'route_name' => 'Rute Alternatif ' . (count($routes) + 1)
                 ];
             }
         }
@@ -466,13 +492,8 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
 
         // Rename routes berdasarkan urutan jarak
         foreach ($uniqueRoutes as $index => &$route) {
-            if ($index === 0) {
-                $route['route_name'] = 'Rute Alternatif ' . ($index + 1);
-                $route['route_type'] = 'direct';
-            } else {
-                $route['route_name'] = 'Rute Alternatif ' . ($index + 1);
-                $route['route_type'] = 'alternative';
-            }
+            $route['route_name'] = 'Rute Alternatif ' . ($index + 1);
+            $route['route_type'] = 'alternative';
         }
 
         $result = [
