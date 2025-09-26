@@ -378,15 +378,9 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
         foreach ($allPossibleRoutes as $index => $route) {
             $routeDetails = getRouteDetails($pdo, $route['path']);
             
-            // Tentukan tipe rute
-            $routeType = ($index === 0) ? 'direct' : 'alternative';
-            $routeName = ($index === 0) ? 'Rute Terpendek' : 'Rute Alternatif ' . $index;
-            
-            // Jika rute hanya 2 node (langsung), beri nama khusus
-            if (count($route['path']) == 2) {
-                $routeName = ($index === 0) ? 'Rute Langsung' : 'Rute Langsung Alt.';
-                $routeType = 'direct';
-            }
+            // Semua rute adalah alternatif dengan nomor berurut
+            $routeType = 'alternative';
+            $routeName = 'Rute Alternatif ' . ($index + 1);
             
             $routes[] = [
                 'distance' => $route['distance'],
@@ -473,10 +467,10 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
         // Rename routes berdasarkan urutan jarak
         foreach ($uniqueRoutes as $index => &$route) {
             if ($index === 0) {
-                $route['route_name'] = count($route['path']) == 2 ? 'Rute Langsung' : 'Rute Terpendek';
+                $route['route_name'] = 'Rute Alternatif ' . ($index + 1);
                 $route['route_type'] = 'direct';
             } else {
-                $route['route_name'] = 'Rute Alternatif ' . $index;
+                $route['route_name'] = 'Rute Alternatif ' . ($index + 1);
                 $route['route_type'] = 'alternative';
             }
         }

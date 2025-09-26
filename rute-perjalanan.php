@@ -220,12 +220,12 @@
                 <div class="mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5><i class="fas fa-route"></i> Pilihan Rute (<?= count($routeResult['data']['routes']) ?> rute tersedia)</h5>
-                        <div class="form-check form-switch">
+                        <!-- <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="enableDirectRoutingToggle">
                             <label class="form-check-label" for="enableDirectRoutingToggle">
                                 <i class="fas fa-route"></i> Tampilkan Rute Langsung (API Leaflet)
                             </label>
-                        </div>
+                        </div> -->
                     </div>
                     <div class="row">
                         <?php foreach ($routeResult['data']['routes'] as $index => $route): ?>
