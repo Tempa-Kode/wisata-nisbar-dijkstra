@@ -565,7 +565,7 @@
                 routeWhileDragging: false
             }).on('routesfound', function(e) {
                 const summary = e.routes[0].summary;
-                const distance = (summary.totalDistance / 1000).toFixed(2);
+                const leafletDistance = (summary.totalDistance / 1000).toFixed(2);
                 const time = Math.round(summary.totalTime / 60);
                 
                 // Update route info badge
@@ -573,8 +573,8 @@
                 const routeInfoText = document.getElementById('route-info-text');
                 routeInfoText.innerHTML = `
                     <strong style="color: #ff6b35;">Rute Langsung (Leaflet)</strong><br>
-                    📏 ${distance} km | ⏱️ ${time} menit<br>
-                    <small class="text-muted">Rute otomatis dari layanan routing</small>
+                    📏 ${leafletDistance} km | ⏱️ ${time} menit<br>
+                    <small class="text-muted">Jarak berdasarkan jaringan jalan OSM</small>
                 `;
                 
                 routeInfoBadge.className = 'route-info-badge';
@@ -665,7 +665,8 @@
                     routeWhileDragging: false
                 }).on('routesfound', function(e) {
                     const summary = e.routes[0].summary;
-                    const distance = (summary.totalDistance / 1000).toFixed(2);
+                    // Gunakan jarak dari hasil Dijkstra, bukan dari Leaflet
+                    const distance = route.distance.toFixed(2);
                     const time = Math.round(summary.totalTime / 60);
                     
                     // Update route info badge
@@ -673,7 +674,7 @@
                     const routeInfoText = document.getElementById('route-info-text');
                     routeInfoText.innerHTML = `
                         <strong style="color: ${routeColor};">${route.route_name}</strong><br>
-                        📏 ${distance} km | ⏱️ ${time} menit
+                        📏 ${distance} km<br>
                     `;
                     
                     // Update route info badge color
