@@ -492,8 +492,13 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
 
         // Rename routes berdasarkan urutan jarak
         foreach ($uniqueRoutes as $index => &$route) {
-            $route['route_name'] = 'Rute Alternatif ' . ($index + 1);
-            $route['route_type'] = 'alternative';
+            if ($index === 0) {
+                $route['route_name'] = 'Rute Alternatif ' . ($index + 1);
+                $route['route_type'] = 'direct';
+            } else {
+                $route['route_name'] = 'Rute Alternatif ' . ($index + 1);
+                $route['route_type'] = 'alternative';
+            }
         }
 
         $result = [

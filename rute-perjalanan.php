@@ -235,15 +235,15 @@
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <h6 class="card-title mb-0"><?= htmlspecialchars($route['route_name']) ?></h6>
                                         <span class="badge route-badge-<?= $index ?> ms-2">
-                                            Route <?= $index + 1 ?>
+                                            Rute <?= $index + 1 ?>
                                         </span>
                                     </div>
                                     <p class="card-text">
                                         <strong><?= round($route['distance'], 2) ?> km</strong><br>
                                         <small class="text-muted"><?= count($route['path']) ?> destinasi</small>
                                     </p>
-                                    <span class="badge bg-secondary">
-                                        Alternatif
+                                   <span class="badge <?= $route['route_type'] === 'direct' ? 'bg-success' : 'bg-secondary' ?>">
+                                        <?= $route['route_type'] === 'direct' ? 'Terpendek' : 'Alternatif' ?>
                                     </span>
                                 </div>
                             </div>
