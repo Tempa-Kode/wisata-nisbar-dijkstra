@@ -1,4 +1,5 @@
 <?php
+// Menampilkan semua rute
 if($_GET['page'] === 'rute/index') {
     $rute = $pdo->query(
     "SELECT 
@@ -15,6 +16,7 @@ if($_GET['page'] === 'rute/index') {
 
 $destinasi = $pdo->query("SELECT * FROM destinasi")->fetchAll(PDO::FETCH_ASSOC);
 
+// Menambahkan rute baru
 if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_method']) && $_POST['_method'] === 'post') {
     $titik_awal = $_POST['titik_awal'];
     $titik_tujuan = $_POST['titik_tujuan'];
@@ -28,6 +30,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_method']) && $_POST['
     }
 }
 
+// Menampilkan data rute untuk diedit
 if($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['page']) && $_GET['page'] === 'rute/edit_rute' && isset($_GET['id'])) {
     $id = $_GET['id'];
      try {
@@ -40,19 +43,22 @@ if($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['page']) && $_GET['page']
     }
 }
 
+// Memperbarui data rute
 if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_method']) && $_POST['_method'] === 'put') {
     $titik_awal = $_POST['titik_awal'];
     $titik_tujuan = $_POST['titik_tujuan'];
     $jarak = $_POST['jarak'];
+    $informasi_transportasi = $_POST['info_transportasi'] ?? "-";
     try {
-        $stmt = $pdo->prepare("UPDATE jarak_antar_destinasi SET titik_awal = ?, titik_tujuan = ?, jarak_km = ?, updated_at = ? WHERE id = ?");
-        $stmt->execute([$titik_awal, $titik_tujuan, $jarak, date('Y-m-d H:i:s'), $_POST['id']]);
+        $stmt = $pdo->prepare("UPDATE jarak_antar_destinasi SET titik_awal = ?, titik_tujuan = ?, jarak_km = ?, info_transportasi = ?, updated_at = ? WHERE id = ?");
+        $stmt->execute([$titik_awal, $titik_tujuan, $jarak, $informasi_transportasi, date('Y-m-d H:i:s'), $_POST['id']]);
         echo "<script>window.location.href = 'index.php?page=rute/index';</script>";
     } catch (\Throwable $th) {
         $error = "Gagal mengupdate data rute: " . $th->getMessage();
     }
 }
 
+// Menghapus data rute
 if($_SERVER['REQUEST_METHOD'] === 'POST' && $_POST['_method'] === 'delete' && isset($_POST['id'])) {
     $id = $_POST['id'];
     try {

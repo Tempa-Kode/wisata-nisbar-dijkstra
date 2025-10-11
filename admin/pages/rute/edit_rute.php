@@ -53,6 +53,15 @@ require_once 'handler.php';
                 </div>
                 <hr class="border border-black">
             </div>
+            <div class="row g-2 align-items-center">
+                <div class="col-12 col-lg-4">
+                    <label for="info_transportasi" class="col-form-label">Informasi Transportasi</label>
+                </div>
+                <div class="col-12 col-lg-8">
+                    <textarea name="info_transportasi" class="form-control" rows="3" id="info_transportasi"><?= $rute['info_transportasi'] ?? ''; ?></textarea>
+                </div>
+                <hr class="border border-black">
+            </div>
             <button type="submit" class="btn btn-success float-end"><i class="fa-solid fa-pen-to-square me-2"></i>Edit</button>
         </form>
     </div>
