@@ -62,13 +62,13 @@ require_once 'handler.php';
                 </div>
                 <hr class="border border-black">
             </div>
-            <h4 class="card-title fw-semibold mb-4 text-center">Estimasi Jarak Berdasarkan Kendaraan</h4>
+            <h4 class="card-title fw-semibold mb-4 text-center">Estimasi Waktu Berdasarkan Kendaraan</h4>
             <div class="row g-2 align-items-center">
                 <div class="col-12 col-lg-4">
                     <label for="mobil" class="col-form-label">Mobil</label>
                 </div>
                 <div class="col-12 col-lg-8">
-                    <input type="number" id="mobil" class="form-control" name="mobil" step="any" placeholder="Masukkan jarak dalam kilometer" value="<?= $kendaraan['mobil']; ?>">
+                    <input type="number" id="mobil" class="form-control" name="mobil" step="any" placeholder="Masukkan waktu dalam jam" value="<?= $kendaraan['mobil']; ?>">
                 </div>
                 <hr class="border border-black">
             </div>
@@ -77,7 +77,7 @@ require_once 'handler.php';
                     <label for="motor" class="col-form-label">Motor</label>
                 </div>
                 <div class="col-12 col-lg-8">
-                    <input type="number" id="motor" class="form-control" name="motor" step="any" placeholder="Masukkan jarak dalam kilometer" value="<?= $kendaraan['motor']; ?>">
+                    <input type="number" id="motor" class="form-control" name="motor" step="any" placeholder="Masukkan waktu dalam jam" value="<?= $kendaraan['motor']; ?>">
                 </div>
                 <hr class="border border-black">
             </div>
@@ -86,7 +86,7 @@ require_once 'handler.php';
                     <label for="kapal" class="col-form-label">Kapal</label>
                 </div>
                 <div class="col-12 col-lg-8">
-                    <input type="number" id="kapal" class="form-control" name="kapal" step="any" placeholder="Masukkan jarak dalam kilometer" value="<?= $kendaraan['kapal']; ?>">
+                    <input type="number" id="kapal" class="form-control" name="kapal" step="any" placeholder="Masukkan waktu dalam jam" value="<?= $kendaraan['kapal']; ?>">
                 </div>
                 <hr class="border border-black">
             </div>
@@ -95,7 +95,7 @@ require_once 'handler.php';
                     <label for="speedboot" class="col-form-label">Speedboot</label>
                 </div>
                 <div class="col-12 col-lg-8">
-                    <input type="number" id="speedboot" class="form-control" name="speedboot" step="any" placeholder="Masukkan jarak dalam kilometer" value="<?= $kendaraan['speedboot']; ?>">
+                    <input type="number" id="speedboot" class="form-control" name="speedboot" step="any" placeholder="Masukkan waktu dalam jam" value="<?= $kendaraan['speedboot']; ?>">
                 </div>
                 <hr class="border border-black">
             </div>
