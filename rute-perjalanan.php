@@ -790,20 +790,58 @@
                             const badgeText = isStart ? 'S' : (isEnd ? 'E' : (index + 1));
                             const badgeClass = isStart ? 'bg-success' : (isEnd ? 'bg-danger' : 'bg-primary');
                             
+                            // Build transportation info only for the final destination
+                            let transportInfo = '';
+                            if (isEnd) {
+                                // Collect all transportation info from previous segments
+                                const prevDestination = index > 0 ? route.route_details[index - 1] : null;
+                                if (prevDestination && prevDestination.segment_info_transportasi && prevDestination.segment_info_transportasi !== '-') {
+                                    transportInfo = '<div class="mt-2 p-3 bg-info bg-opacity-10 rounded border border-info">';
+                                    transportInfo += '<div class="d-flex align-items-start">';
+                                    transportInfo += '<i class="fas fa-bus text-info me-2 mt-1"></i>';
+                                    transportInfo += '<div>';
+                                    transportInfo += '<strong class="text-info">Informasi Transportasi:</strong><br>';
+                                    transportInfo += `<span class="text-dark">${prevDestination.segment_info_transportasi}</span>`;
+                                    transportInfo += '</div>';
+                                    transportInfo += '</div>';
+                                    transportInfo += '</div>';
+                                }
+                            }
+                            
+                            // Build segment info for non-end destinations (jarak dan waktu saja)
+                            let segmentInfo = '';
+                            if (!isEnd && destination.segment_distance_km) {
+                                segmentInfo = '<div class="mt-2 p-2 bg-light rounded small">';
+                                segmentInfo += '<i class="fas fa-arrow-right text-primary"></i> ';
+                                segmentInfo += `<strong>${destination.segment_distance_km} km</strong>`;
+                                
+                                if (destination.segment_time_minutes) {
+                                    const hours = Math.floor(destination.segment_time_minutes / 60);
+                                    const mins = Math.round(destination.segment_time_minutes % 60);
+                                    const timeText = hours > 0 ? `${hours} jam ${mins} menit` : `${mins} menit`;
+                                    segmentInfo += ` | <i class="fas fa-clock text-success"></i> ${timeText}`;
+                                }
+                                
+                                segmentInfo += '</div>';
+                            }
+                            
                             return `
-                                <div class="list-group-item d-flex align-items-center">
-                                    <div class="me-3">
-                                        <span style="background-color: ${markerColor}; width: 30px; height: 30px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">${badgeText}</span>
+                                <div class="list-group-item">
+                                    <div class="d-flex align-items-start">
+                                        <div class="me-3">
+                                            <span style="background-color: ${markerColor}; width: 30px; height: 30px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">${badgeText}</span>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">
+                                                ${destination.nama_destinasi}
+                                                ${isStart ? ' <span class="badge bg-success">Start</span>' : ''}
+                                                ${isEnd ? ' <span class="badge bg-danger">Finish</span>' : ''}
+                                            </h6>
+                                            <small class="text-muted">${destination.lokasi || ''}</small>
+                                            ${segmentInfo}
+                                            ${transportInfo}
+                                        </div>
                                     </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-1">
-                                            ${destination.nama_destinasi}
-                                            ${isStart ? ' <span class="badge bg-success">Start</span>' : ''}
-                                            ${isEnd ? ' <span class="badge bg-danger">Finish</span>' : ''}
-                                        </h6>
-                                        <small class="text-muted">${destination.lokasi || ''}</small>
-                                    </div>
-                                    ${!isEnd ? '<div class="ms-2"><i class="fas fa-arrow-down text-primary"></i></div>' : ''}
                                 </div>
                             `;
                         }).join('')}

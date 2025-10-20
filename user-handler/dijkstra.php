@@ -355,14 +355,15 @@ function getRouteDetails($pdo, $path, $kendaraan = null) {
         }
     }
     
-    // Tambahkan informasi jarak dan waktu antar segmen
+    // Tambahkan informasi jarak, waktu, dan transportasi antar segmen
     for ($i = 0; $i < count($orderedDetails) - 1; $i++) {
         $currentId = $orderedDetails[$i]['id'];
         $nextId = $orderedDetails[$i + 1]['id'];
         
-        // Query jarak dan waktu antar segmen
+        // Query jarak, waktu, dan informasi transportasi antar segmen
         $segmentSql = "SELECT 
                         j.jarak_km,
+                        j.info_transportasi,
                         k.mobil, 
                         k.motor, 
                         k.kapal, 
@@ -380,6 +381,7 @@ function getRouteDetails($pdo, $path, $kendaraan = null) {
         
         if ($segmentData) {
             $orderedDetails[$i]['segment_distance_km'] = $segmentData['jarak_km'];
+            $orderedDetails[$i]['segment_info_transportasi'] = $segmentData['info_transportasi'] ?? null;
             
             if ($kendaraan) {
                 $vehicleColumn = strtolower($kendaraan);
