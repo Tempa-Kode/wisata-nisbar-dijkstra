@@ -170,6 +170,19 @@
                             <input type="number" name="latitude" id="latitude" step="any" hidden>
                             <input type="number" name="longitude" id="longitude" step="any" hidden>
                             <input type="hidden" name="multiple_routes" value="1">
+                            
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-12">
+                                    <select class="form-select" name="kendaraan" id="kendaraan">
+                                        <option value="" selected>🚗 Mode: Jarak Terpendek (Km)</option>
+                                        <option value="mobil" <?php if (isset($_GET['kendaraan']) && $_GET['kendaraan'] === 'mobil') echo 'selected'; ?>>🚗 Mobil (Rute Tercepat)</option>
+                                        <option value="motor" <?php if (isset($_GET['kendaraan']) && $_GET['kendaraan'] === 'motor') echo 'selected'; ?>>🏍️ Motor (Rute Tercepat)</option>
+                                        <option value="kapal" <?php if (isset($_GET['kendaraan']) && $_GET['kendaraan'] === 'kapal') echo 'selected'; ?>>🚢 Kapal (Rute Tercepat)</option>
+                                        <option value="speedboot" <?php if (isset($_GET['kendaraan']) && $_GET['kendaraan'] === 'speedboot') echo 'selected'; ?>>⛵ Speedboat (Rute Tercepat)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
                             <div class="input-group">
                                 <select class="form-select" name="titik_awal" id="titik_awal" required>
                                     <option value="" selected hidden>pilih titik awal</option>
@@ -239,11 +252,24 @@
                                         </span>
                                     </div>
                                     <p class="card-text">
-                                        <strong><?= round($route['distance'], 2) ?> km</strong><br>
+                                        <i class="fas fa-route"></i> <strong><?= round($route['distance'], 2) ?> km</strong><br>
+                                        <?php if (isset($route['time_formatted'])): ?>
+                                        <i class="fas fa-clock"></i> <strong><?= htmlspecialchars($route['time_formatted']) ?></strong><br>
+                                        <?php endif; ?>
                                         <small class="text-muted"><?= count($route['path']) ?> destinasi</small>
                                     </p>
-                                   <span class="badge <?= $route['route_type'] === 'direct' ? 'bg-success' : 'bg-secondary' ?>">
-                                        <?= $route['route_type'] === 'direct' ? 'Terpendek' : 'Alternatif' ?>
+                                   <span class="badge <?= in_array($route['route_type'], ['direct', 'shortest', 'fastest']) ? 'bg-success' : 'bg-secondary' ?>">
+                                        <?php 
+                                        if ($route['route_type'] === 'fastest') {
+                                            echo '⚡ Tercepat';
+                                        } elseif ($route['route_type'] === 'shortest') {
+                                            echo '📏 Terpendek';
+                                        } elseif ($route['route_type'] === 'direct') {
+                                            echo '✓ Terbaik';
+                                        } else {
+                                            echo 'Alternatif';
+                                        }
+                                        ?>
                                     </span>
                                 </div>
                             </div>
@@ -276,7 +302,10 @@
                                         </span>
                                     </div>
                                     <p class="card-text">
-                                        <strong><?= round($route['distance'], 2) ?> km</strong><br>
+                                        <i class="fas fa-route"></i> <strong><?= round($route['distance'], 2) ?> km</strong><br>
+                                        <?php if (isset($route['time_formatted'])): ?>
+                                        <i class="fas fa-clock"></i> <strong><?= htmlspecialchars($route['time_formatted']) ?></strong><br>
+                                        <?php endif; ?>
                                         <small class="text-muted"><?= count($route['path']) ?> destinasi</small>
                                     </p>
                                     <span class="badge bg-secondary">
@@ -719,8 +748,24 @@
         // Update route details display
         function updateRouteDetails(routeIndex) {
             const route = resultData.routes[routeIndex];
+            
+            // Build time information if available
+            let timeInfo = '';
+            if (route.time_formatted) {
+                timeInfo = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-clock"></i> <strong>Estimasi Waktu Tempuh:</strong> ${route.time_formatted}
+                    </div>
+                `;
+            }
+            
             const detailsHtml = `
                 <h4><i class="fas fa-route"></i> Detail ${route.route_name}</h4>
+                <div class="mb-3">
+                    <span class="badge bg-primary"><i class="fas fa-route"></i> Jarak: ${route.distance} km</span>
+                    ${route.time_formatted ? `<span class="badge bg-success ms-2"><i class="fas fa-clock"></i> Waktu: ${route.time_formatted}</span>` : ''}
+                </div>
+                ${timeInfo}
                 <div class="route-details mt-3">
                     <h6><i class="fas fa-list-ol"></i> Jalur Perjalanan:</h6>
                     <div class="list-group">

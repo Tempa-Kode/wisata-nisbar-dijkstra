@@ -11,6 +11,26 @@ class MinHeap extends SplMinHeap {
 }
 
 /**
+ * Format waktu dari menit ke format yang lebih mudah dibaca
+ */
+function formatTime($minutes) {
+    if ($minutes === null || $minutes <= 0) {
+        return '-';
+    }
+    
+    $hours = floor($minutes / 60);
+    $mins = round($minutes % 60);
+    
+    if ($hours > 0 && $mins > 0) {
+        return "{$hours} jam {$mins} menit";
+    } elseif ($hours > 0) {
+        return "{$hours} jam";
+    } else {
+        return "{$mins} menit";
+    }
+}
+
+/**
  * Menghitung jarak menggunakan formula Haversine
  */
 function haversineDistance($lat1, $lon1, $lat2, $lon2) {
@@ -120,17 +140,59 @@ function findNearestConnectedDestination($pdo, $graph, $destinationId) {
 
 /**
  * Mengambil semua data jarak antar destinasi dan bangun graf
+ * @param PDO $pdo Koneksi database
+ * @param string|null $kendaraan Jenis kendaraan: 'mobil', 'motor', 'kapal', 'speedboot'. Jika null, gunakan jarak_km
+ * @return array Graph dengan informasi tambahan tentang mode yang digunakan
  */
-function buildGraph($pdo) {
+function buildGraph($pdo, $kendaraan = null) {
     $graph = [];
-    $sql = "SELECT titik_awal, titik_tujuan, jarak_km FROM jarak_antar_destinasi";
+    $graphMetadata = [
+        'mode' => $kendaraan ? 'time' : 'distance',
+        'vehicle' => $kendaraan,
+        'edges' => []
+    ];
+    
+    // Query dengan JOIN ke tabel jarak_berdasarkan_kendaraan
+    $sql = "SELECT 
+                j.id, 
+                j.titik_awal, 
+                j.titik_tujuan, 
+                j.jarak_km,
+                k.mobil, 
+                k.motor, 
+                k.kapal, 
+                k.speedboot
+            FROM jarak_antar_destinasi j
+            LEFT JOIN jarak_berdasarkan_kendaraan k 
+            ON j.id = k.jarak_antar_destinasi_id";
+    
     $stmt = $pdo->query($sql);
     $distances = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($distances as $row) {
         $from = $row['titik_awal'];
         $to = $row['titik_tujuan'];
-        $distance = $row['jarak_km'];
+        
+        // Tentukan bobot edge berdasarkan mode
+        $weight = null;
+        $distance_km = $row['jarak_km'];
+        $time_minutes = null;
+        
+        if ($kendaraan) {
+            // Mode waktu: gunakan waktu kendaraan yang dipilih
+            $vehicleColumn = strtolower($kendaraan);
+            if (isset($row[$vehicleColumn]) && $row[$vehicleColumn] !== null) {
+                $weight = floatval($row[$vehicleColumn]);
+                $time_minutes = $weight;
+            } else {
+                // Jika data kendaraan tidak tersedia, skip edge ini atau gunakan fallback
+                // Untuk backward compatibility, kita gunakan jarak sebagai fallback
+                $weight = floatval($distance_km);
+            }
+        } else {
+            // Mode jarak: gunakan jarak_km
+            $weight = floatval($distance_km);
+        }
 
         // Inisialisasi node jika belum ada
         if (!isset($graph[$from])) {
@@ -141,10 +203,20 @@ function buildGraph($pdo) {
         }
 
         // Tambahkan edge (sisi) ke graf (bidirectional)
-        $graph[$from][$to] = $distance;
-        $graph[$to][$from] = $distance;
+        $graph[$from][$to] = $weight;
+        $graph[$to][$from] = $weight;
+        
+        // Simpan metadata untuk referensi
+        $graphMetadata['edges'][] = [
+            'from' => $from,
+            'to' => $to,
+            'distance_km' => $distance_km,
+            'time_minutes' => $time_minutes,
+            'weight' => $weight
+        ];
     }
-    return $graph;
+    
+    return ['graph' => $graph, 'metadata' => $graphMetadata];
 }
 
 /**
@@ -255,8 +327,12 @@ function dijkstra($graph, $start, $end) {
 
 /**
  * Mendapatkan detail rute berdasarkan path
+ * @param PDO $pdo Koneksi database
+ * @param array $path Array of destination IDs
+ * @param string|null $kendaraan Jenis kendaraan untuk menghitung waktu
+ * @return array Route details dengan informasi jarak dan waktu
  */
-function getRouteDetails($pdo, $path) {
+function getRouteDetails($pdo, $path, $kendaraan = null) {
     if (empty($path)) {
         return [];
     }
@@ -278,6 +354,40 @@ function getRouteDetails($pdo, $path) {
             }
         }
     }
+    
+    // Tambahkan informasi jarak dan waktu antar segmen
+    for ($i = 0; $i < count($orderedDetails) - 1; $i++) {
+        $currentId = $orderedDetails[$i]['id'];
+        $nextId = $orderedDetails[$i + 1]['id'];
+        
+        // Query jarak dan waktu antar segmen
+        $segmentSql = "SELECT 
+                        j.jarak_km,
+                        k.mobil, 
+                        k.motor, 
+                        k.kapal, 
+                        k.speedboot
+                    FROM jarak_antar_destinasi j
+                    LEFT JOIN jarak_berdasarkan_kendaraan k 
+                    ON j.id = k.jarak_antar_destinasi_id
+                    WHERE (j.titik_awal = ? AND j.titik_tujuan = ?)
+                       OR (j.titik_awal = ? AND j.titik_tujuan = ?)
+                    LIMIT 1";
+        
+        $segmentStmt = $pdo->prepare($segmentSql);
+        $segmentStmt->execute([$currentId, $nextId, $nextId, $currentId]);
+        $segmentData = $segmentStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($segmentData) {
+            $orderedDetails[$i]['segment_distance_km'] = $segmentData['jarak_km'];
+            
+            if ($kendaraan) {
+                $vehicleColumn = strtolower($kendaraan);
+                $orderedDetails[$i]['segment_time_minutes'] = $segmentData[$vehicleColumn] ?? null;
+            }
+        }
+    }
+    
     return $orderedDetails;
 }
 
@@ -336,9 +446,19 @@ function findAllPossibleRoutes($graph, $start, $end, $maxRoutes = 5, $maxPathLen
 
 /**
  * Fungsi untuk mencari beberapa rute alternatif (versi yang diperbaiki)
+ * @param PDO $pdo Koneksi database
+ * @param mixed $titikAwal ID destinasi atau 'lokasi_sekarang'
+ * @param int $titikTujuan ID destinasi tujuan
+ * @param float|null $userLat Latitude user jika menggunakan lokasi sekarang
+ * @param float|null $userLon Longitude user jika menggunakan lokasi sekarang
+ * @param int $maxRoutes Maksimal jumlah rute yang dikembalikan
+ * @param string|null $kendaraan Jenis kendaraan: 'mobil', 'motor', 'kapal', 'speedboot'
+ * @return array Result dengan multiple routes
  */
-function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $userLon = null, $maxRoutes = 8) {
-    $graph = buildGraph($pdo);
+function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $userLon = null, $maxRoutes = 8, $kendaraan = null) {
+    $graphData = buildGraph($pdo, $kendaraan);
+    $graph = $graphData['graph'];
+    $metadata = $graphData['metadata'];
     $routes = [];
     
     // Determine the actual start node for graph calculations
@@ -376,10 +496,29 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
         $routeCounter = 1;
         
         foreach ($allPossibleRoutes as $index => $route) {
-            $routeDetails = getRouteDetails($pdo, $route['path']);
+            $routeDetails = getRouteDetails($pdo, $route['path'], $kendaraan);
             
-            // Hitung total jarak
-            $totalDistance = $route['distance'];
+            // Hitung total jarak dan waktu
+            $totalDistance = 0;
+            $totalTime = 0;
+            
+            // Hitung dari path menggunakan graph weight
+            for ($i = 0; $i < count($route['path']) - 1; $i++) {
+                $from = $route['path'][$i];
+                $to = $route['path'][$i + 1];
+                
+                // Cari edge data dari metadata
+                foreach ($metadata['edges'] as $edge) {
+                    if (($edge['from'] == $from && $edge['to'] == $to) || 
+                        ($edge['from'] == $to && $edge['to'] == $from)) {
+                        $totalDistance += $edge['distance_km'];
+                        if ($kendaraan && $edge['time_minutes']) {
+                            $totalTime += $edge['time_minutes'];
+                        }
+                        break;
+                    }
+                }
+            }
             
             // Jika titik awal adalah lokasi sekarang, tambahkan jarak dari user ke destinasi terdekat
             if ($titikAwal === 'lokasi_sekarang') {
@@ -388,19 +527,36 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
                     $startDestination['latitude'], $startDestination['longitude']
                 );
                 $totalDistance += $distanceToNearestDestination;
+                
+                // Estimasi waktu ke destinasi terdekat
+                if ($kendaraan) {
+                    $estimatedSpeed = match($kendaraan) {
+                        'mobil' => 40, 'motor' => 35, 'kapal' => 25, 'speedboot' => 45,
+                        default => 30
+                    };
+                    $totalTime += ($distanceToNearestDestination / $estimatedSpeed) * 60;
+                }
             }
             
             // Semua rute adalah alternatif dengan nomor berurut
             $routeType = 'alternative';
             $routeName = 'Rute Alternatif ' . ($index + 1);
             
-            $routes[] = [
-                'distance' => $totalDistance,
+            $routeData = [
+                'distance' => round($totalDistance, 2),
                 'path' => $route['path'],
                 'route_details' => $routeDetails,
                 'route_type' => $routeType,
                 'route_name' => $routeName
             ];
+            
+            // Tambahkan informasi waktu jika menggunakan mode kendaraan
+            if ($kendaraan) {
+                $routeData['time_minutes'] = round($totalTime, 2);
+                $routeData['time_formatted'] = formatTime($totalTime);
+            }
+            
+            $routes[] = $routeData;
         }
     }
 
@@ -416,10 +572,28 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
                 }
                 $fullPath = array_merge($fullPath, array_slice($dijkstraResult['path'], 1));
                 
-                $routeDetails = getRouteDetails($pdo, $fullPath);
+                $routeDetails = getRouteDetails($pdo, $fullPath, $kendaraan);
                 
-                // Hitung total jarak
-                $totalDistance = $dijkstraResult['distance'];
+                // Hitung total jarak dan waktu
+                $totalDistance = 0;
+                $totalTime = 0;
+                
+                // Hitung jarak dan waktu untuk seluruh path
+                for ($i = 0; $i < count($fullPath) - 1; $i++) {
+                    $from = $fullPath[$i];
+                    $to = $fullPath[$i + 1];
+                    
+                    foreach ($metadata['edges'] as $edge) {
+                        if (($edge['from'] == $from && $edge['to'] == $to) || 
+                            ($edge['from'] == $to && $edge['to'] == $from)) {
+                            $totalDistance += $edge['distance_km'];
+                            if ($kendaraan && $edge['time_minutes']) {
+                                $totalTime += $edge['time_minutes'];
+                            }
+                            break;
+                        }
+                    }
+                }
                 
                 // Jika titik awal adalah lokasi sekarang, tambahkan jarak dari user ke destinasi terdekat
                 if ($titikAwal === 'lokasi_sekarang') {
@@ -428,21 +602,45 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
                         $startDestination['latitude'], $startDestination['longitude']
                     );
                     $totalDistance += $distanceToNearestDestination;
+                    
+                    if ($kendaraan) {
+                        $estimatedSpeed = match($kendaraan) {
+                            'mobil' => 40, 'motor' => 35, 'kapal' => 25, 'speedboot' => 45,
+                            default => 30
+                        };
+                        $totalTime += ($distanceToNearestDestination / $estimatedSpeed) * 60;
+                    }
                 } else {
                     // Jika titik awal bukan lokasi sekarang, tambahkan jarak ke nearest connected
-                    $totalDistance += haversineDistance(
+                    $distToConnected = haversineDistance(
                         $startDestination['latitude'], $startDestination['longitude'],
                         $nearestConnected['latitude'], $nearestConnected['longitude']
                     );
+                    $totalDistance += $distToConnected;
+                    
+                    if ($kendaraan) {
+                        $estimatedSpeed = match($kendaraan) {
+                            'mobil' => 40, 'motor' => 35, 'kapal' => 25, 'speedboot' => 45,
+                            default => 30
+                        };
+                        $totalTime += ($distToConnected / $estimatedSpeed) * 60;
+                    }
                 }
                 
-                $routes[] = [
-                    'distance' => $totalDistance,
+                $routeData = [
+                    'distance' => round($totalDistance, 2),
                     'path' => $fullPath,
                     'route_details' => $routeDetails,
                     'route_type' => 'alternative',
                     'route_name' => 'Rute Alternatif ' . (count($routes) + 1)
                 ];
+                
+                if ($kendaraan) {
+                    $routeData['time_minutes'] = round($totalTime, 2);
+                    $routeData['time_formatted'] = formatTime($totalTime);
+                }
+                
+                $routes[] = $routeData;
             }
         }
     }
@@ -485,18 +683,29 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
             $seenNodeSets[$nodeSetKey] = count($uniqueRoutes) - 1; // Store index of this route
         }
         
-        // Sort routes by distance
-        usort($uniqueRoutes, function($a, $b) {
-            return $a['distance'] <=> $b['distance'];
+        // Sort routes by distance or time (depending on mode)
+        usort($uniqueRoutes, function($a, $b) use ($kendaraan) {
+            if ($kendaraan && isset($a['time_minutes']) && isset($b['time_minutes'])) {
+                // Sort by time when vehicle is selected
+                return $a['time_minutes'] <=> $b['time_minutes'];
+            } else {
+                // Sort by distance when no vehicle selected
+                return $a['distance'] <=> $b['distance'];
+            }
         });
 
-        // Rename routes berdasarkan urutan jarak
+        // Rename routes berdasarkan urutan (jarak atau waktu)
         foreach ($uniqueRoutes as $index => &$route) {
             if ($index === 0) {
-                $route['route_name'] = 'Rute Alternatif ' . ($index + 1);
-                $route['route_type'] = 'direct';
+                if ($kendaraan) {
+                    $route['route_name'] = 'Rute Tercepat';
+                    $route['route_type'] = 'fastest';
+                } else {
+                    $route['route_name'] = 'Rute Terpendek';
+                    $route['route_type'] = 'shortest';
+                }
             } else {
-                $route['route_name'] = 'Rute Alternatif ' . ($index + 1);
+                $route['route_name'] = 'Rute Alternatif ' . $index;
                 $route['route_type'] = 'alternative';
             }
         }
@@ -507,7 +716,9 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
             'data' => [
                 'routes' => $uniqueRoutes,
                 'start_destination_details' => $startDestination,
-                'target_destination_details' => null
+                'target_destination_details' => null,
+                'mode' => $kendaraan ? 'time' : 'distance',
+                'vehicle' => $kendaraan
             ]
         ];
 
@@ -745,9 +956,17 @@ if (isset($_GET['titik_awal']) && isset($_GET['titik_tujuan']) && !empty($_GET['
         $userLat = isset($_GET['latitude']) && !empty($_GET['latitude']) ? floatval($_GET['latitude']) : null;
         $userLon = isset($_GET['longitude']) && !empty($_GET['longitude']) ? floatval($_GET['longitude']) : null;
         
+        // Get vehicle parameter
+        $kendaraan = isset($_GET['kendaraan']) && !empty($_GET['kendaraan']) ? $_GET['kendaraan'] : null;
+        
+        // Validate vehicle type
+        if ($kendaraan && !in_array($kendaraan, ['mobil', 'motor', 'kapal', 'speedboot'])) {
+            $kendaraan = null;
+        }
+        
         // Use multiple routes function if requested, otherwise use single route
         if (isset($_GET['multiple_routes']) && $_GET['multiple_routes'] == '1') {
-            $routeResult = findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat, $userLon);
+            $routeResult = findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat, $userLon, 8, $kendaraan);
         } else {
             $routeResult = findRoute($pdo, $titikAwal, $titikTujuan, $userLat, $userLon);
         }
