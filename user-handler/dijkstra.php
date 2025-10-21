@@ -383,10 +383,13 @@ function getRouteDetails($pdo, $path, $kendaraan = null) {
             $orderedDetails[$i]['segment_distance_km'] = $segmentData['jarak_km'];
             $orderedDetails[$i]['segment_info_transportasi'] = $segmentData['info_transportasi'] ?? null;
             
-            if ($kendaraan) {
-                $vehicleColumn = strtolower($kendaraan);
-                $orderedDetails[$i]['segment_time_minutes'] = $segmentData[$vehicleColumn] ?? null;
-            }
+            // Simpan semua waktu kendaraan (tidak tergantung parameter $kendaraan)
+            $orderedDetails[$i]['segment_vehicles'] = [
+                'mobil' => $segmentData['mobil'] ?? null,
+                'motor' => $segmentData['motor'] ?? null,
+                'kapal' => $segmentData['kapal'] ?? null,
+                'speedboot' => $segmentData['speedboot'] ?? null
+            ];
         }
     }
     

@@ -171,18 +171,6 @@
                             <input type="number" name="longitude" id="longitude" step="any" hidden>
                             <input type="hidden" name="multiple_routes" value="1">
                             
-                            <div class="row g-2 mb-2">
-                                <div class="col-md-12">
-                                    <select class="form-select" name="kendaraan" id="kendaraan">
-                                        <option value="" selected>🚗 Mode: Jarak Terpendek (Km)</option>
-                                        <option value="mobil" <?php if (isset($_GET['kendaraan']) && $_GET['kendaraan'] === 'mobil') echo 'selected'; ?>>🚗 Mobil (Rute Tercepat)</option>
-                                        <option value="motor" <?php if (isset($_GET['kendaraan']) && $_GET['kendaraan'] === 'motor') echo 'selected'; ?>>🏍️ Motor (Rute Tercepat)</option>
-                                        <option value="kapal" <?php if (isset($_GET['kendaraan']) && $_GET['kendaraan'] === 'kapal') echo 'selected'; ?>>🚢 Kapal (Rute Tercepat)</option>
-                                        <option value="speedboot" <?php if (isset($_GET['kendaraan']) && $_GET['kendaraan'] === 'speedboot') echo 'selected'; ?>>⛵ Speedboat (Rute Tercepat)</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
                             <div class="input-group">
                                 <select class="form-select" name="titik_awal" id="titik_awal" required>
                                     <option value="" selected hidden>pilih titik awal</option>
@@ -253,9 +241,6 @@
                                     </div>
                                     <p class="card-text">
                                         <i class="fas fa-route"></i> <strong><?= round($route['distance'], 2) ?> km</strong><br>
-                                        <?php if (isset($route['time_formatted'])): ?>
-                                        <i class="fas fa-clock"></i> <strong><?= htmlspecialchars($route['time_formatted']) ?></strong><br>
-                                        <?php endif; ?>
                                         <small class="text-muted"><?= count($route['path']) ?> destinasi</small>
                                     </p>
                                    <span class="badge <?= in_array($route['route_type'], ['direct', 'shortest', 'fastest']) ? 'bg-success' : 'bg-secondary' ?>">
@@ -303,9 +288,6 @@
                                     </div>
                                     <p class="card-text">
                                         <i class="fas fa-route"></i> <strong><?= round($route['distance'], 2) ?> km</strong><br>
-                                        <?php if (isset($route['time_formatted'])): ?>
-                                        <i class="fas fa-clock"></i> <strong><?= htmlspecialchars($route['time_formatted']) ?></strong><br>
-                                        <?php endif; ?>
                                         <small class="text-muted"><?= count($route['path']) ?> destinasi</small>
                                     </p>
                                     <span class="badge bg-secondary">
@@ -762,10 +744,12 @@
             const detailsHtml = `
                 <h4><i class="fas fa-route"></i> Detail ${route.route_name}</h4>
                 <div class="mb-3">
-                    <span class="badge bg-primary"><i class="fas fa-route"></i> Jarak: ${route.distance} km</span>
-                    ${route.time_formatted ? `<span class="badge bg-success ms-2"><i class="fas fa-clock"></i> Waktu: ${route.time_formatted}</span>` : ''}
+                    <span class="badge bg-primary"><i class="fas fa-route"></i> Total Jarak: ${route.distance} km</span>
+                    <span class="badge bg-secondary ms-2"><i class="fas fa-road"></i> ${route.path.length} destinasi</span>
                 </div>
-                ${timeInfo}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> <strong>Info:</strong> Waktu tempuh untuk setiap jenis kendaraan ditampilkan pada setiap segmen perjalanan di bawah.
+                </div>
                 <div class="route-details mt-3">
                     <h6><i class="fas fa-list-ol"></i> Jalur Perjalanan:</h6>
                     <div class="list-group">
@@ -790,36 +774,64 @@
                             const badgeText = isStart ? 'S' : (isEnd ? 'E' : (index + 1));
                             const badgeClass = isStart ? 'bg-success' : (isEnd ? 'bg-danger' : 'bg-primary');
                             
-                            // Build transportation info only for the final destination
-                            let transportInfo = '';
-                            if (isEnd) {
-                                // Collect all transportation info from previous segments
-                                const prevDestination = index > 0 ? route.route_details[index - 1] : null;
-                                if (prevDestination && prevDestination.segment_info_transportasi && prevDestination.segment_info_transportasi !== '-') {
-                                    transportInfo = '<div class="mt-2 p-3 bg-info bg-opacity-10 rounded border border-info">';
-                                    transportInfo += '<div class="d-flex align-items-start">';
-                                    transportInfo += '<i class="fas fa-bus text-info me-2 mt-1"></i>';
-                                    transportInfo += '<div>';
-                                    transportInfo += '<strong class="text-info">Informasi Transportasi:</strong><br>';
-                                    transportInfo += `<span class="text-dark">${prevDestination.segment_info_transportasi}</span>`;
-                                    transportInfo += '</div>';
-                                    transportInfo += '</div>';
-                                    transportInfo += '</div>';
-                                }
-                            }
-                            
-                            // Build segment info for non-end destinations (jarak dan waktu saja)
+                            // Build segment info with all vehicle options
                             let segmentInfo = '';
                             if (!isEnd && destination.segment_distance_km) {
-                                segmentInfo = '<div class="mt-2 p-2 bg-light rounded small">';
-                                segmentInfo += '<i class="fas fa-arrow-right text-primary"></i> ';
-                                segmentInfo += `<strong>${destination.segment_distance_km} km</strong>`;
+                                segmentInfo = '<div class="mt-2 p-3 bg-light rounded border">';
                                 
-                                if (destination.segment_time_minutes) {
-                                    const hours = Math.floor(destination.segment_time_minutes / 60);
-                                    const mins = Math.round(destination.segment_time_minutes % 60);
-                                    const timeText = hours > 0 ? `${hours} jam ${mins} menit` : `${mins} menit`;
-                                    segmentInfo += ` | <i class="fas fa-clock text-success"></i> ${timeText}`;
+                                // Jarak
+                                segmentInfo += '<div class="mb-2">';
+                                segmentInfo += '<i class="fas fa-route text-primary"></i> ';
+                                segmentInfo += `<strong>Jarak:</strong> ${destination.segment_distance_km} km`;
+                                segmentInfo += '</div>';
+                                
+                                // Waktu Tempuh untuk setiap kendaraan
+                                if (destination.segment_vehicles) {
+                                    segmentInfo += '<div class="mb-2">';
+                                    segmentInfo += '<i class="fas fa-clock text-success"></i> ';
+                                    segmentInfo += '<strong>Waktu Tempuh:</strong>';
+                                    segmentInfo += '<div class="ms-4 mt-1 small">';
+                                    
+                                    const vehicles = destination.segment_vehicles;
+                                    const vehicleIcons = {
+                                        'mobil': '🚗',
+                                        'motor': '🏍️',
+                                        'kapal': '🚢',
+                                        'speedboot': '⛵'
+                                    };
+                                    const vehicleLabels = {
+                                        'mobil': 'Mobil',
+                                        'motor': 'Motor',
+                                        'kapal': 'Kapal',
+                                        'speedboot': 'Speedboat'
+                                    };
+                                    
+                                    let hasVehicleData = false;
+                                    for (const [vehicle, minutes] of Object.entries(vehicles)) {
+                                        if (minutes && minutes > 0) {
+                                            hasVehicleData = true;
+                                            const hours = Math.floor(minutes / 60);
+                                            const mins = Math.round(minutes % 60);
+                                            const timeText = hours > 0 ? `${hours} jam ${mins} menit` : `${mins} menit`;
+                                            segmentInfo += `<div>${vehicleIcons[vehicle]} <strong>${vehicleLabels[vehicle]}:</strong> ${timeText}</div>`;
+                                        }
+                                    }
+                                    
+                                    if (!hasVehicleData) {
+                                        segmentInfo += '<div class="text-muted">Data waktu tidak tersedia</div>';
+                                    }
+                                    
+                                    segmentInfo += '</div>';
+                                    segmentInfo += '</div>';
+                                }
+                                
+                                // Informasi Transportasi
+                                if (destination.segment_info_transportasi && destination.segment_info_transportasi !== '-') {
+                                    segmentInfo += '<div class="mt-2 pt-2 border-top">';
+                                    segmentInfo += '<i class="fas fa-info-circle text-info"></i> ';
+                                    segmentInfo += '<strong>Info Transportasi:</strong><br>';
+                                    segmentInfo += `<div class="ms-4 mt-1 small text-dark">${destination.segment_info_transportasi}</div>`;
+                                    segmentInfo += '</div>';
                                 }
                                 
                                 segmentInfo += '</div>';
@@ -839,7 +851,6 @@
                                             </h6>
                                             <small class="text-muted">${destination.lokasi || ''}</small>
                                             ${segmentInfo}
-                                            ${transportInfo}
                                         </div>
                                     </div>
                                 </div>
