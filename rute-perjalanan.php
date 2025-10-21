@@ -741,7 +741,7 @@
                 `;
             }
             
-            const detailsHtml = `
+            let detailsHtml = `
                 <h4><i class="fas fa-route"></i> Detail ${route.route_name}</h4>
                 <div class="mb-3">
                     <span class="badge bg-primary"><i class="fas fa-route"></i> Total Jarak: ${route.distance} km</span>
@@ -859,6 +859,58 @@
                     </div>
                 </div>
             `;
+            
+            // Add total time by vehicle section at the bottom
+            if (route.total_time_by_vehicle) {
+                const vehicleIcons = {
+                    'mobil': '🚗',
+                    'motor': '🏍️',
+                    'kapal': '🚢',
+                    'speedboot': '⛵'
+                };
+                const vehicleLabels = {
+                    'mobil': 'Mobil',
+                    'motor': 'Motor',
+                    'kapal': 'Kapal',
+                    'speedboot': 'Speedboat'
+                };
+                
+                let hasAnyTimeData = false;
+                let totalTimeHtml = `
+                    <div class="mt-4 p-3 bg-light border rounded">
+                        <h6 class="mb-3"><i class="fas fa-clock"></i> Total Waktu Tempuh Berdasarkan Kendaraan</h6>
+                        <div class="row">
+                `;
+                
+                for (const [vehicle, minutes] of Object.entries(route.total_time_by_vehicle)) {
+                    if (minutes && minutes > 0) {
+                        hasAnyTimeData = true;
+                        const hours = Math.floor(minutes / 60);
+                        const mins = Math.round(minutes % 60);
+                        const timeText = hours > 0 ? `${hours} jam ${mins} menit` : `${mins} menit`;
+                        
+                        totalTimeHtml += `
+                            <div class="col-6 col-md-3 mb-2">
+                                <div class="text-center p-2 bg-white border rounded">
+                                    <div style="font-size: 1.5rem;">${vehicleIcons[vehicle]}</div>
+                                    <small class="d-block fw-bold">${vehicleLabels[vehicle]}</small>
+                                    <span class="badge bg-primary mt-1">${timeText}</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                totalTimeHtml += `
+                        </div>
+                    </div>
+                `;
+                
+                if (hasAnyTimeData) {
+                    detailsHtml += totalTimeHtml;
+                }
+            }
+            
             document.getElementById('route-details').innerHTML = detailsHtml;
         }
 

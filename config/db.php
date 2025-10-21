@@ -2,7 +2,7 @@
 $provider = 'mysql';
 $host = 'localhost'; 
 $port = '3306';
-$dbname = 'db_wisata_nisbar';
+$dbname = 'db_wisata_nisbar_new_v3';
 $username = 'root';
 $password = '';
 

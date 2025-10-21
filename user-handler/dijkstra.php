@@ -503,26 +503,35 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
         foreach ($allPossibleRoutes as $index => $route) {
             $routeDetails = getRouteDetails($pdo, $route['path'], $kendaraan);
             
-            // Hitung total jarak dan waktu
+            // Hitung total jarak dan waktu untuk semua kendaraan
             $totalDistance = 0;
             $totalTime = 0;
+            $totalTimeByVehicle = [
+                'mobil' => 0,
+                'motor' => 0,
+                'kapal' => 0,
+                'speedboot' => 0
+            ];
             
-            // Hitung dari path menggunakan graph weight
-            for ($i = 0; $i < count($route['path']) - 1; $i++) {
-                $from = $route['path'][$i];
-                $to = $route['path'][$i + 1];
+            // Hitung dari routeDetails yang sudah mengandung segment_vehicles
+            foreach ($routeDetails as $detail) {
+                if (isset($detail['segment_distance_km'])) {
+                    $totalDistance += $detail['segment_distance_km'];
+                }
                 
-                // Cari edge data dari metadata
-                foreach ($metadata['edges'] as $edge) {
-                    if (($edge['from'] == $from && $edge['to'] == $to) || 
-                        ($edge['from'] == $to && $edge['to'] == $from)) {
-                        $totalDistance += $edge['distance_km'];
-                        if ($kendaraan && $edge['time_minutes']) {
-                            $totalTime += $edge['time_minutes'];
+                // Hitung waktu untuk setiap jenis kendaraan
+                if (isset($detail['segment_vehicles'])) {
+                    foreach ($detail['segment_vehicles'] as $vehicle => $minutes) {
+                        if ($minutes !== null && $minutes > 0) {
+                            $totalTimeByVehicle[$vehicle] += $minutes;
                         }
-                        break;
                     }
                 }
+            }
+            
+            // Jika kendaraan dipilih, set totalTime ke kendaraan yang dipilih
+            if ($kendaraan && isset($totalTimeByVehicle[$kendaraan])) {
+                $totalTime = $totalTimeByVehicle[$kendaraan];
             }
             
             // Jika titik awal adalah lokasi sekarang, tambahkan jarak dari user ke destinasi terdekat
@@ -533,13 +542,21 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
                 );
                 $totalDistance += $distanceToNearestDestination;
                 
-                // Estimasi waktu ke destinasi terdekat
+                // Estimasi waktu ke destinasi terdekat untuk semua kendaraan
+                $speedByVehicle = [
+                    'mobil' => 40,
+                    'motor' => 35,
+                    'kapal' => 25,
+                    'speedboot' => 45
+                ];
+                
+                foreach ($speedByVehicle as $vehicle => $speed) {
+                    $totalTimeByVehicle[$vehicle] += ($distanceToNearestDestination / $speed) * 60;
+                }
+                
+                // Update totalTime jika kendaraan dipilih
                 if ($kendaraan) {
-                    $estimatedSpeed = match($kendaraan) {
-                        'mobil' => 40, 'motor' => 35, 'kapal' => 25, 'speedboot' => 45,
-                        default => 30
-                    };
-                    $totalTime += ($distanceToNearestDestination / $estimatedSpeed) * 60;
+                    $totalTime = $totalTimeByVehicle[$kendaraan];
                 }
             }
             
@@ -552,7 +569,8 @@ function findMultipleRoutes($pdo, $titikAwal, $titikTujuan, $userLat = null, $us
                 'path' => $route['path'],
                 'route_details' => $routeDetails,
                 'route_type' => $routeType,
-                'route_name' => $routeName
+                'route_name' => $routeName,
+                'total_time_by_vehicle' => $totalTimeByVehicle
             ];
             
             // Tambahkan informasi waktu jika menggunakan mode kendaraan
